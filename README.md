@@ -42,6 +42,24 @@ The table at the top of [`crates/anynote-onenote/src/lib.rs`](crates/anynote-one
 
 Release builds (`.deb`, `.rpm`, `.AppImage`) are produced by the [release workflow](.github/workflows/release.yml) when a version tag is pushed. To build them yourself, follow [Build from source](#build-from-source) and run `npx tauri build` in `app/`. The packages land in `target/release/bundle/`.
 
+## Raspberry Pi and older Linux (browser version)
+
+The desktop app needs WebKitGTK 4.1, which older systems such as Raspbian 11 (bullseye) don't have. `anynote-server` is the same app as one static program: it serves the interface, which is built into it, opens it in Chromium as an app window, and keeps notes in the same data folder. It needs nothing installed and no internet.
+
+Build it for a 32-bit Pi (`armv7l`) from any Linux PC:
+
+```sh
+cd app && npm install && npx vite build && cd ..
+pip install ziglang && cargo install cargo-zigbuild
+rustup target add armv7-unknown-linux-musleabihf      # aarch64-unknown-linux-musl for 64-bit Pi OS
+cargo zigbuild --release -p anynote-server --target armv7-unknown-linux-musleabihf
+# → target/armv7-unknown-linux-musleabihf/release/anynote-server
+```
+
+Copy the file to the Pi (a USB stick is fine), make it executable (`chmod +x anynote-server`) and run it. The first run adds AnyNote to the applications menu. `anynote-server --help` lists the options (port, data folder, `--no-browser`).
+
+The server listens on 127.0.0.1 only and rejects requests from other web pages (Host, Origin and custom-header checks). `--host 0.0.0.0` exposes it to your network **without a password**, so use that only on a network you trust.
+
 ## Build from source
 
 You need Rust 1.85+ and Node 22, plus the WebKitGTK development packages:
@@ -87,6 +105,7 @@ cargo run -p anynote-cli -- onenote-dump Section.one --out dump.json   # inspect
 crates/anynote-core      block model, CRDT page documents, SQLite store, search, folder format
 crates/anynote-onenote   OneNote importer (built on onenote_parser)
 crates/anynote-cli       `anynote` command-line tool
+crates/anynote-server    browser version: local web server with the UI built in
 app/                     desktop app: React + TipTap UI
 app/src-tauri            Tauri shell: commands, asset protocol, events
 fixtures/editor-compat   documents shared by the Rust ↔ editor contract tests

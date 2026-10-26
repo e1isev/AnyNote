@@ -33,3 +33,29 @@ jobs:
             target/release/bundle/deb/*.deb
             target/release/bundle/rpm/*.rpm
             target/release/bundle/appimage/*.AppImage
+
+  browser-version:
+    name: anynote-server (${{ matrix.target }})
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        target: [armv7-unknown-linux-musleabihf, aarch64-unknown-linux-musl, x86_64-unknown-linux-musl]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - run: npm ci && npx vite build
+        working-directory: app
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+      - run: pip install ziglang && cargo install cargo-zigbuild --locked
+      - run: cargo zigbuild --release -p anynote-server --target ${{ matrix.target }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: anynote-server-${{ matrix.target }}
+          path: target/${{ matrix.target }}/release/anynote-server

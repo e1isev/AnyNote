@@ -34,6 +34,7 @@ The phases follow [PLAN.md](PLAN.md). Each phase has a gate that must be met bef
 - [x] Backlinks, Tasks view across notebooks, Tags view, version history, trash
 - [x] Open folder format: export and import, lossless round trip, Markdown folders
 - [x] Linux packages (`.deb`, `.rpm`, `.AppImage`) via the release workflow
+- [x] Browser version (`anynote-server`): one static binary for Raspberry Pi and older Linux
 - [ ] Page and block embeds (`![[Page]]`, block references using block ids)
 - [ ] Typed page properties and saved queries
 - [ ] Find in page, outline/table-of-contents panel, word count

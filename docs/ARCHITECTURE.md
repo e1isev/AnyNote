@@ -23,6 +23,8 @@ AnyNote follows the build plan in [`docs/PLAN.md`](PLAN.md): keep OneNote's good
 └────────────────────────────────┘  └─────────────────────────────┘
 ```
 
+The same UI also runs in a plain browser against `crates/anynote-server`. That is one static binary with the built UI embedded, used on systems without WebKitGTK 4.1, such as Raspbian 11. `app/src/platform.ts` is the only code that knows which host it is in. Under Tauri, commands use IPC and events; under the server, they go over HTTP: `POST /api/<command>`, long-polling `/api/events`, and assets at `/asset/<hash>`.
+
 ## Data model
 
 | Concept | Representation |

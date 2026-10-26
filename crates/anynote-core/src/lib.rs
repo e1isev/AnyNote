@@ -17,6 +17,7 @@ pub mod markdown;
 pub mod node;
 pub mod paths;
 pub mod store;
+pub mod welcome;
 pub mod ydoc;
 
 pub use node::{Mark, Node};

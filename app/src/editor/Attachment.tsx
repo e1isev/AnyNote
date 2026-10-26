@@ -1,9 +1,8 @@
 import { Node, mergeAttributes } from "@tiptap/core";
 import { NodeViewWrapper, ReactNodeViewRenderer, type ReactNodeViewProps } from "@tiptap/react";
 import { Download, ExternalLink, File, FileAudio, FileImage, FileText, FileVideo } from "lucide-react";
-import { save } from "@tauri-apps/plugin-dialog";
 import { assetSrc, formatBytes } from "./assets";
-import { invoke } from "@tauri-apps/api/core";
+import { openAttachment, saveAttachment } from "../platform";
 import { reportError } from "../ui/overlay";
 
 function iconFor(mime: string) {
@@ -21,11 +20,8 @@ function hashOf(src: string) {
 function AttachmentView({ node }: ReactNodeViewProps) {
   const { src, name, size, mime } = node.attrs as { src: string; name: string; size: number; mime: string };
   const type = mime || "application/octet-stream";
-  const open = () => invoke("open_asset", { hash: hashOf(src), name }).catch(reportError);
-  const saveAs = async () => {
-    const path = await save({ defaultPath: name });
-    if (path) await invoke("save_asset", { hash: hashOf(src), path }).catch(reportError);
-  };
+  const open = () => openAttachment(hashOf(src), name).catch(reportError);
+  const saveAs = () => saveAttachment(hashOf(src), name).catch(reportError);
   return (
     <NodeViewWrapper className="attachment" data-drag-handle="">
       <div className="attachment-card" contentEditable={false}>

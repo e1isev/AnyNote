@@ -1,6 +1,6 @@
-// Typed wrappers around the Tauri commands in src-tauri/src/lib.rs.
-import { invoke } from "@tauri-apps/api/core";
-import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+// Typed wrappers around the backend commands (src-tauri/src/lib.rs in the
+// desktop app, crates/anynote-server in the browser).
+import { call as invoke } from "./platform";
 import type {
   AssetInfo,
   ExportSummary,
@@ -103,11 +103,4 @@ export const api = {
   dataDir: () => invoke<string>("data_dir"),
 };
 
-export interface PageUpdateEvent {
-  pageId: string;
-  update: number[];
-}
-
-export function onPageUpdate(cb: (e: PageUpdateEvent) => void): Promise<UnlistenFn> {
-  return listen<PageUpdateEvent>("page-update", (event) => cb(event.payload));
-}
+export { onPageUpdate, type PageUpdateEvent } from "./platform";

@@ -4,6 +4,7 @@ import { getStroke } from "perfect-freehand";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as Y from "yjs";
 import { Eraser, Highlighter, PenLine, Redo2, Trash2, Undo2 } from "lucide-react";
+import { uuid } from "../platform";
 
 /**
  * A drawing canvas block. Strokes live in the page's Y.Doc under
@@ -227,7 +228,7 @@ function InkView({ node, updateAttributes, editor, extension }: ReactNodeViewPro
     const arr = strokesArray();
     arr?.push([
       {
-        id: crypto.randomUUID(),
+        id: uuid(),
         tool: tool as "pen" | "highlighter",
         color,
         size,
@@ -386,7 +387,7 @@ export const InkBlock = Node.create<InkOptions>({
         () =>
         ({ commands }) =>
           commands.insertContent([
-            { type: this.name, attrs: { inkId: crypto.randomUUID(), height: 320 } },
+            { type: this.name, attrs: { inkId: uuid(), height: 320 } },
             { type: "paragraph" },
           ]),
     };

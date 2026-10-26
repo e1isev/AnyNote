@@ -1,6 +1,6 @@
 import { EditorContent, useEditor, type Editor } from "@tiptap/react";
 import { useMemo, useRef } from "react";
-import { openUrl } from "@tauri-apps/plugin-opener";
+import { openExternal } from "../platform";
 import { editorExtensions } from "./extensions";
 import { insertFiles } from "./assets";
 import { Toolbar } from "./Toolbar";
@@ -66,7 +66,7 @@ export function PageEditor({ sync, onOpenPage, onCreatePage }: Props) {
             .find((m) => m.type.name === "link");
           const href = link?.attrs.href as string | undefined;
           if (!href) return false;
-          openUrl(href).catch(reportError);
+          openExternal(href).catch(reportError);
           return true;
         },
       },

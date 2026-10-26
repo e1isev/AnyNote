@@ -12,7 +12,8 @@ export default defineConfig({
     watch: { ignored: ["**/src-tauri/**"] },
   },
   build: {
-    target: "es2022",
+    // Old enough for the Chromium on Raspbian 11 (anynote-server's browser UI).
+    target: ["chrome87", "firefox78", "safari14"],
     chunkSizeWarningLimit: 2500,
   },
   test: {

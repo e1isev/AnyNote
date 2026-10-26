@@ -464,33 +464,11 @@ fn serve_asset(app: &AppHandle, uri: &tauri::http::Uri) -> HttpResponse<Vec<u8>>
     }
 }
 
-/// First run: a welcome notebook that shows off what pages can hold.
-fn seed_welcome(store: &mut Store) -> anynote_core::Result<()> {
-    if !store.list_notebooks()?.is_empty() || !store.list_trash()?.is_empty() {
-        return Ok(());
-    }
-    let nb = store.create_notebook("My notebook", Some("#7c5cff"))?;
-    let sec = store.create_section(&nb.id, None, "Getting started")?;
-    let welcome_md = include_str!("../welcome.md");
-    let doc = markdown::from_markdown(welcome_md, &mut |_| None);
-    store.create_page_with_content(
-        &sec.id,
-        None,
-        "Welcome to AnyNote",
-        Placement::End,
-        &doc,
-        &Default::default(),
-        None,
-    )?;
-    store.create_section(&nb.id, None, "Ideas")?;
-    Ok(())
-}
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let dir = default_data_dir();
     let mut store = Store::open(&dir).unwrap_or_else(|e| panic!("cannot open data folder {}: {e}", dir.display()));
-    if let Err(e) = seed_welcome(&mut store) {
+    if let Err(e) = anynote_core::welcome::seed_welcome(&mut store) {
         eprintln!("could not create the welcome notebook: {e}");
     }
 

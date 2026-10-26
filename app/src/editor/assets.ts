@@ -1,21 +1,20 @@
 import type { Editor } from "@tiptap/core";
 import { api } from "../api";
+import { assetUrl } from "../platform";
 
 const PREFIX = "anynote://asset/";
-const isWindows = typeof navigator !== "undefined" && /windows/i.test(navigator.userAgent);
 
 /** Map a stored `anynote://asset/<hash>` URL to one the webview can load. */
 export function assetSrc(url: string | null | undefined): string {
   if (!url) return "";
   if (!url.startsWith(PREFIX)) return url;
-  const hash = url.slice(PREFIX.length);
-  return isWindows ? `http://anynote.localhost/asset/${hash}` : `anynote://localhost/asset/${hash}`;
+  return assetUrl(url.slice(PREFIX.length));
 }
 
 /** Inverse of {@link assetSrc}, for HTML pasted from our own pages. */
 export function canonicalAssetUrl(src: string | null): string | null {
   if (!src) return src;
-  const m = /^(?:anynote:\/\/localhost|http:\/\/anynote\.localhost)\/asset\/([0-9a-f]{64})$/.exec(src);
+  const m = /^(?:anynote:\/\/localhost|http:\/\/anynote\.localhost|https?:\/\/[^/]+)?\/asset\/([0-9a-f]{64})$/.exec(src);
   return m ? PREFIX + m[1] : src;
 }
 

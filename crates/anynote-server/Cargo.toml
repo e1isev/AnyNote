@@ -1,0 +1,21 @@
+[package]
+name = "anynote-server"
+description = "AnyNote in the browser: a local web server with the app's UI built in, for systems that can't run the desktop app"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "anynote-server"
+path = "src/main.rs"
+
+[dependencies]
+anynote-core.workspace = true
+anynote-onenote.workspace = true
+anyhow.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tiny_http = "0.12"
+include_dir = "0.7"
+
+[dev-dependencies]
+tempfile.workspace = true

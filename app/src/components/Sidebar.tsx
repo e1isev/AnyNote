@@ -18,7 +18,7 @@ import {
   ArrowUp,
   ArrowDown,
 } from "lucide-react";
-import { open } from "@tauri-apps/plugin-dialog";
+import { pickExportFolder, pickImportPath } from "../platform";
 import { api } from "../api";
 import type { NotebookTree, Section, View } from "../types";
 import { confirmAction, openMenu, promptText, reportError, toast, type MenuEntry } from "../ui/overlay";
@@ -84,11 +84,8 @@ export function Sidebar(props: Props) {
   };
 
   const doImport = async (kind: "onenote-file" | "onenote-folder" | "markdown") => {
-    const path =
-      kind === "onenote-file"
-        ? await open({ multiple: false, filters: [{ name: "OneNote", extensions: ["one", "onetoc2"] }] })
-        : await open({ multiple: false, directory: true });
-    if (typeof path !== "string") return;
+    const path = await pickImportPath(kind);
+    if (!path) return;
     setBusy("Importing…");
     try {
       const r = kind === "markdown" ? await api.importFolder(path) : await api.importOneNote(path);
@@ -107,8 +104,8 @@ export function Sidebar(props: Props) {
   };
 
   const doExport = async () => {
-    const path = await open({ multiple: false, directory: true, title: "Export notebooks to…" });
-    if (typeof path !== "string") return;
+    const path = await pickExportFolder("Export notebooks to…");
+    if (!path) return;
     setBusy("Exporting…");
     try {
       const s = await api.exportFolder(path);
@@ -150,8 +147,8 @@ export function Sidebar(props: Props) {
         label: "Export…",
         icon: <Download size={15} />,
         onSelect: async () => {
-          const path = await open({ multiple: false, directory: true, title: `Export “${nb.title}” to…` });
-          if (typeof path === "string")
+          const path = await pickExportFolder(`Export “${nb.title}” to…`);
+          if (path)
             api
               .exportFolder(path, [nb.id])
               .then((s) => toast(`Exported ${s.pages} pages`, "success"))
