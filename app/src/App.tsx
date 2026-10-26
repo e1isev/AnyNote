@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { FilePlus2, NotebookPen } from "lucide-react";
+import { FilePlus2, Menu, NotebookPen } from "lucide-react";
 import { api } from "./api";
 import { Sidebar } from "./components/Sidebar";
 import { PageList } from "./components/PageList";
@@ -9,8 +9,11 @@ import { TasksView } from "./components/TasksView";
 import { TagsView } from "./components/TagsView";
 import { TrashView } from "./components/TrashView";
 import { setPageTitle } from "./pageTitles";
+import { defaultDrawingHeight, getPrefs } from "./prefs";
 import type { NotebookTree, Page, Section, View } from "./types";
 import { OverlayHost, reportError } from "./ui/overlay";
+import { useLongSwipe, useMediaQuery } from "./touch";
+import { PhoneDialog } from "./components/PhoneDialog";
 
 function load<T>(key: string, fallback: T): T {
   try {
@@ -35,6 +38,16 @@ export function App() {
   const [pages, setPages] = useState<Page[]>([]);
   const [view, setView] = useState<View>({ kind: "empty" });
   const [searchOpen, setSearchOpen] = useState(false);
+  const [phoneOpen, setPhoneOpen] = useState(false);
+  // Small screens show the notebooks and pages as a pull-out drawer.
+  const compact = useMediaQuery("(max-width: 999px)");
+  const [navOpen, setNavOpen] = useState(!compact);
+  useEffect(() => setNavOpen(!compact), [compact]);
+  const compactRef = useRef(compact);
+  compactRef.current = compact;
+  const openNav = useCallback(() => setNavOpen(true), []);
+  const closeNav = useCallback(() => setNavOpen(false), []);
+  useLongSwipe(openNav, closeNav);
   const sectionRef = useRef<Section | null>(null);
   sectionRef.current = section;
 
@@ -62,7 +75,7 @@ export function App() {
   };
 
   const openPage = useCallback(
-    async (pageId: string, knownTree?: NotebookTree[]) => {
+    async (pageId: string, knownTree?: NotebookTree[], keepNav = false) => {
       try {
         const [page] = await api.getPage(pageId);
         if (sectionRef.current?.id !== page.sectionId) {
@@ -73,6 +86,7 @@ export function App() {
         }
         await refreshPages(page.sectionId);
         setView({ kind: "page", pageId });
+        if (compactRef.current && !keepNav) setNavOpen(false);
         store("lastPage", pageId);
         store(`lastPage:${page.sectionId}`, pageId);
       } catch (e) {
@@ -89,7 +103,8 @@ export function App() {
       const list = await refreshPages(sec.id).catch((e) => (reportError(e), [] as Page[]));
       const remembered = load<string | null>(`lastPage:${sec.id}`, null);
       const target = list.find((p) => p.id === remembered) ?? list[0];
-      if (target) void openPage(target.id);
+      // Keep the drawer open so the section's pages can be picked.
+      if (target) void openPage(target.id, undefined, true);
       else setView({ kind: "empty" });
     },
     [openPage, refreshPages],
@@ -145,7 +160,13 @@ export function App() {
       const sec = sectionRef.current;
       if (!sec) return;
       try {
-        const page = await api.createPage(sec.id, { parentId: parentId ?? null, after });
+        const { newPageDrawing } = getPrefs();
+        const page = await api.createPage(sec.id, {
+          parentId: parentId ?? null,
+          after,
+          ink: newPageDrawing,
+          inkHeight: defaultDrawingHeight(),
+        });
         await openPage(page.id);
       } catch (e) {
         reportError(e);
@@ -233,13 +254,18 @@ export function App() {
   }
 
   return (
-    <div className="app">
+    <div className={`app ${compact ? "compact" : "wide"} ${navOpen ? "nav-open" : "nav-closed"}`}>
+      <div className="nav">
       <Sidebar
         tree={tree}
         view={view}
         sectionId={section?.id ?? null}
         onSelectSection={(s) => void selectSection(s)}
-        onView={setView}
+        onView={(v) => {
+          setView(v);
+          if (compact) setNavOpen(false);
+        }}
+        onPhone={() => setPhoneOpen(true)}
         onSearch={() => setSearchOpen(true)}
         onChanged={() => void onTreeChanged()}
         onImported={(ids) => {
@@ -263,7 +289,21 @@ export function App() {
         onChanged={() => void refreshPages().catch(reportError)}
         onNewPage={(parentId, after) => void newPage(parentId, after)}
       />
-      <main className="main">{main}</main>
+      </div>
+      {compact && navOpen && <div className="nav-backdrop" onClick={closeNav} />}
+      <main className="main">
+        <button
+          className="nav-toggle"
+          title={navOpen ? "Hide notebooks (or swipe left)" : "Show notebooks (or swipe right)"}
+          aria-label={navOpen ? "Hide notebooks" : "Show notebooks"}
+          aria-expanded={navOpen}
+          onClick={() => setNavOpen(!navOpen)}
+        >
+          <Menu size={20} />
+        </button>
+        {main}
+      </main>
+      {phoneOpen && <PhoneDialog onClose={() => setPhoneOpen(false)} />}
       {searchOpen && <SearchPalette onOpen={(id) => void openPage(id)} onClose={() => setSearchOpen(false)} />}
       <OverlayHost />
     </div>

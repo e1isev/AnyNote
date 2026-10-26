@@ -1,6 +1,9 @@
 import { EditorContent, useEditor, type Editor } from "@tiptap/react";
 import { useMemo, useRef } from "react";
-import { openExternal } from "../platform";
+import { PenTool } from "lucide-react";
+import type * as Y from "yjs";
+import { openExternal, uuid } from "../platform";
+import { defaultDrawingHeight } from "../prefs";
 import { editorExtensions } from "./extensions";
 import { insertFiles } from "./assets";
 import { Toolbar } from "./Toolbar";
@@ -22,6 +25,47 @@ export function editMath(latex: string) {
     monospace: true,
     confirmText: "Done (Ctrl+Enter)",
   });
+}
+
+/** Scroll a drawing area into view once the editor has rendered it. */
+function revealDrawing(editor: Editor, inkId: string) {
+  requestAnimationFrame(() => {
+    const el = editor.view.dom.querySelector(`[data-ink-id="${CSS.escape(inkId)}"]`);
+    el?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+}
+
+/**
+ * Start drawing: at the cursor while typing, otherwise at the end of the page,
+ * reusing an empty drawing area that is already there.
+ */
+export function addDrawing(editor: Editor, doc: Y.Doc) {
+  if (editor.isFocused) {
+    const inkId = uuid();
+    editor.chain().focus().insertInk({ inkId }).run();
+    revealDrawing(editor, inkId);
+    return;
+  }
+  const blocks = editor.state.doc.content;
+  let last = blocks.lastChild;
+  if (last?.type.name === "paragraph" && last.content.size === 0 && blocks.childCount > 1) {
+    last = blocks.child(blocks.childCount - 2);
+  }
+  const existing = last?.type.name === "inkBlock" ? String(last.attrs.inkId) : null;
+  const strokes = existing ? ((doc.getMap("ink").get(existing) as Y.Array<unknown> | undefined)?.length ?? 0) : 1;
+  if (existing && strokes === 0) {
+    revealDrawing(editor, existing);
+    return;
+  }
+  const inkId = uuid();
+  editor
+    .chain()
+    .insertContentAt(editor.state.doc.content.size, [
+      { type: "inkBlock", attrs: { inkId, height: defaultDrawingHeight() } },
+      { type: "paragraph" },
+    ])
+    .run();
+  revealDrawing(editor, inkId);
 }
 
 /** The rich-text editor for one page, bound to the page's Y.Doc. */
@@ -78,8 +122,17 @@ export function PageEditor({ sync, onOpenPage, onCreatePage }: Props) {
   if (!editor) return null;
   return (
     <div className="editor">
-      <Toolbar editor={editor} editMath={editMath} />
+      <Toolbar editor={editor} editMath={editMath} onDraw={() => addDrawing(editor, sync.doc)} />
       <EditorContent editor={editor} className="editor-body" />
+      <button
+        className="fab-draw"
+        title="Draw: add a drawing area for handwriting"
+        aria-label="Draw"
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => addDrawing(editor, sync.doc)}
+      >
+        <PenTool size={24} />
+      </button>
     </div>
   );
 }

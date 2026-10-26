@@ -50,12 +50,17 @@ export const api = {
   deleteSection: (id: string) => invoke<void>("delete_section", { id }),
 
   listPages: (sectionId: string) => invoke<Page[]>("list_pages", { sectionId }),
-  createPage: (sectionId: string, opts: { parentId?: string | null; title?: string; after?: string } = {}) =>
+  createPage: (
+    sectionId: string,
+    opts: { parentId?: string | null; title?: string; after?: string; ink?: boolean; inkHeight?: number } = {},
+  ) =>
     invoke<Page>("create_page", {
       sectionId,
       parentId: opts.parentId ?? null,
       title: opts.title ?? "",
       after: opts.after,
+      ink: opts.ink ?? false,
+      inkHeight: opts.inkHeight,
     }),
   getPage: (id: string) => invoke<[Page, PageRef]>("get_page", { id }),
   renamePage: (id: string, title: string) => invoke<Page>("rename_page", { id, title }),

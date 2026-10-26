@@ -14,9 +14,10 @@ mod dispatch;
 
 use std::collections::VecDeque;
 use std::io::{Read, Write};
-use std::net::{IpAddr, TcpStream};
+use std::net::{IpAddr, TcpStream, UdpSocket};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
 use std::time::{Duration, Instant};
 
@@ -117,8 +118,125 @@ struct App {
     store: Mutex<Store>,
     data_dir: PathBuf,
     events: Events,
-    /// Accepted `Host` header values (DNS-rebinding protection); empty = any.
+    /// `Host` values of this machine's own browser (DNS-rebinding protection).
     hosts: Vec<String>,
+    /// Phones and tablets on the local network may connect (with the key).
+    phone_enabled: AtomicBool,
+    /// Port of the local-network listener, once it runs.
+    phone_port: Mutex<Option<u16>>,
+    /// Secret that other devices need; it travels in the QR-code link and
+    /// is then kept in a cookie.
+    key: String,
+    port: u16,
+}
+
+/// Is this request allowed, and does it need a redirect that stores the key?
+enum Access {
+    Allowed,
+    StoreKey(String),
+    Denied,
+}
+
+impl App {
+    fn access(&self, req: &Request, path: &str, query: &str) -> Access {
+        let loopback = req.remote_addr().is_some_and(|a| a.ip().is_loopback());
+        let own_host = header(req, "host").is_some_and(|h| self.hosts.contains(&h));
+        if loopback && own_host {
+            return Access::Allowed;
+        }
+        if !self.phone_enabled.load(Ordering::Relaxed) {
+            return Access::Denied;
+        }
+        if query.split('&').any(|kv| kv.strip_prefix("key=") == Some(self.key.as_str())) {
+            return Access::StoreKey(path.to_string());
+        }
+        let cookie = header(req, "cookie").unwrap_or_default();
+        let has_key = cookie.split(';').any(|c| c.trim().strip_prefix("anynote_key=") == Some(self.key.as_str()));
+        if has_key {
+            Access::Allowed
+        } else {
+            Access::Denied
+        }
+    }
+
+    /// Turn access from other devices on or off; starts the listener once.
+    fn set_phone_access(self: &Arc<Self>, enable: bool) -> Result<(), String> {
+        let flag = self.data_dir.join("phone-access");
+        if enable {
+            let mut port = self.phone_port.lock().unwrap();
+            if port.is_none() {
+                let lan_port = self.port + 1;
+                let server = Server::http(("0.0.0.0", lan_port))
+                    .map_err(|e| format!("cannot listen on port {lan_port} for phones: {e}"))?;
+                let app = self.clone();
+                std::thread::spawn(move || {
+                    for request in server.incoming_requests() {
+                        let app = app.clone();
+                        std::thread::spawn(move || handle(&app, request));
+                    }
+                });
+                *port = Some(lan_port);
+            }
+            let _ = std::fs::write(&flag, b"on\n");
+        } else {
+            let _ = std::fs::remove_file(&flag);
+        }
+        self.phone_enabled.store(enable, Ordering::Relaxed);
+        Ok(())
+    }
+
+    fn phone_status(&self) -> Value {
+        let enabled = self.phone_enabled.load(Ordering::Relaxed);
+        let port = *self.phone_port.lock().unwrap();
+        let urls: Vec<String> = match (enabled, port) {
+            (true, Some(port)) => {
+                lan_addresses().iter().map(|ip| format!("http://{ip}:{port}/?key={}", self.key)).collect()
+            }
+            _ => Vec::new(),
+        };
+        json!({ "enabled": enabled, "urls": urls })
+    }
+}
+
+/// The key other devices need, created once and kept in the data folder.
+fn load_or_create_key(data_dir: &Path) -> String {
+    let path = data_dir.join("phone-key");
+    if let Ok(k) = std::fs::read_to_string(&path) {
+        let k = k.trim();
+        if k.len() >= 10 && k.chars().all(|c| c.is_ascii_alphanumeric()) {
+            return k.to_string();
+        }
+    }
+    // The tail of a UUIDv7 is random; two of them give 80 random bits.
+    let a = anynote_core::ids::new_id().replace('-', "");
+    let b = anynote_core::ids::new_id().replace('-', "");
+    let key = format!("{}{}", &a[a.len() - 10..], &b[b.len() - 10..]);
+    let _ = std::fs::write(&path, &key);
+    key
+}
+
+/// This machine's IPv4 addresses on the local network.
+fn lan_addresses() -> Vec<IpAddr> {
+    let mut out: Vec<IpAddr> = Vec::new();
+    // The address used to reach the outside world (no packet is sent).
+    if let Ok(sock) = UdpSocket::bind("0.0.0.0:0") {
+        if sock.connect("192.0.2.1:9").is_ok() {
+            if let Ok(addr) = sock.local_addr() {
+                out.push(addr.ip());
+            }
+        }
+    }
+    // Every address, for networks without a default route (e.g. a phone hotspot
+    // without data): `hostname -I` lists them on Raspberry Pi OS and most Linux.
+    if let Ok(o) = Command::new("hostname").arg("-I").output() {
+        for ip in String::from_utf8_lossy(&o.stdout).split_whitespace().filter_map(|s| s.parse::<IpAddr>().ok()) {
+            if !out.contains(&ip) {
+                out.push(ip);
+            }
+        }
+    }
+    out.retain(|ip| ip.is_ipv4() && !ip.is_loopback() && !ip.is_unspecified());
+    out
 }
 
 fn main() {
@@ -155,17 +273,26 @@ fn main() {
     if let Err(e) = anynote_core::welcome::seed_welcome(&mut store) {
         eprintln!("anynote-server: could not create the welcome notebook: {e}");
     }
-    let hosts = if opts.host.is_loopback() {
-        vec![format!("127.0.0.1:{}", opts.port), format!("localhost:{}", opts.port)]
-    } else {
-        Vec::new()
-    };
+    let hosts = vec![format!("127.0.0.1:{}", opts.port), format!("localhost:{}", opts.port)];
     let app = Arc::new(App {
         store: Mutex::new(store),
         data_dir: opts.data_dir.clone(),
         events: Events { log: Mutex::new((0, VecDeque::new())), changed: Condvar::new() },
         hosts,
+        // Listening beyond this machine (--host) means other devices are expected.
+        phone_enabled: AtomicBool::new(!opts.host.is_loopback()),
+        phone_port: Mutex::new(None),
+        key: load_or_create_key(&opts.data_dir),
+        port: opts.port,
     });
+    if opts.data_dir.join("phone-access").exists() {
+        if let Err(e) = app.set_phone_access(true) {
+            eprintln!("anynote-server: {e}");
+        }
+    }
+    if !opts.host.is_loopback() {
+        println!("Other devices: http://<this computer's address>:{}/?key={}", opts.port, app.key);
+    }
 
     println!("AnyNote is running at {url}");
     println!("Notes are stored in {}", opts.data_dir.display());
@@ -207,15 +334,37 @@ fn text(req: Request, status: u16, msg: &str) {
     respond(req, status, "text/plain; charset=utf-8", msg.as_bytes().to_vec(), "no-store");
 }
 
-fn handle(app: &App, mut req: Request) {
-    // Only answer requests addressed to us by name, so a web page can't
-    // reach the notes through DNS rebinding.
-    if !app.hosts.is_empty() && !header(&req, "host").is_some_and(|h| app.hosts.contains(&h)) {
-        return text(req, 403, "forbidden host");
-    }
+fn handle(app: &Arc<App>, mut req: Request) {
     let url = req.url().to_string();
     let (path, query) = url.split_once('?').unwrap_or((&url, ""));
     let path = path.to_string();
+
+    // This machine's own browser may always connect (when it addresses us by
+    // name, which defeats DNS rebinding); other devices need the key.
+    match app.access(&req, &path, query) {
+        Access::Allowed => {}
+        Access::StoreKey(to) => {
+            let mut res = Response::empty(StatusCode(302));
+            for (k, v) in [
+                ("Location", to.as_str()),
+                ("Set-Cookie", &format!("anynote_key={}; Path=/; Max-Age=31536000; SameSite=Lax; HttpOnly", app.key)),
+                ("Cache-Control", "no-store"),
+            ] {
+                if let Ok(h) = Header::from_bytes(k.as_bytes(), v.as_bytes()) {
+                    res.add_header(h);
+                }
+            }
+            let _ = req.respond(res);
+            return;
+        }
+        Access::Denied => {
+            return text(
+                req,
+                403,
+                "AnyNote: open the link (or scan the QR code) shown in AnyNote under Settings > Use on phone or tablet.",
+            );
+        }
+    }
 
     if let Some(command) = path.strip_prefix("/api/") {
         // API calls must carry our header (cross-site requests can't without
@@ -227,6 +376,19 @@ fn handle(app: &App, mut req: Request) {
         };
         if header(&req, "x-anynote").as_deref() != Some("1") || !same_origin {
             return text(req, 403, "forbidden");
+        }
+        if command == "phone_access" {
+            let mut body = Vec::new();
+            let _ = req.as_reader().read_to_end(&mut body);
+            let enable = serde_json::from_slice::<Value>(&body).ok().and_then(|v| v.get("enable")?.as_bool());
+            // Only this machine may switch access for other devices.
+            let local = req.remote_addr().is_some_and(|a| a.ip().is_loopback());
+            if let Some(enable) = enable.filter(|_| local) {
+                if let Err(e) = app.set_phone_access(enable) {
+                    return text(req, 500, &e);
+                }
+            }
+            return respond(req, 200, "application/json", app.phone_status().to_string().into_bytes(), "no-store");
         }
         if command == "events" {
             let since = query
@@ -349,7 +511,14 @@ fn open_browser(url: &str, data_dir: &Path) {
             let spawned = Command::new(chromium)
                 .arg(format!("--app={url}"))
                 .arg(format!("--user-data-dir={}", profile.display()))
-                .args(["--no-first-run", "--no-default-browser-check", "--password-store=basic", "--class=AnyNote"])
+                .args([
+                    "--no-first-run",
+                    "--no-default-browser-check",
+                    "--password-store=basic",
+                    "--class=AnyNote",
+                    // Touch screens report touches (not mouse clicks), for swiping.
+                    "--touch-events=enabled",
+                ])
                 .stdout(Stdio::null())
                 .stderr(Stdio::null())
                 .spawn();

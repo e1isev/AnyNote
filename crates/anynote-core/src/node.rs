@@ -123,6 +123,15 @@ impl Node {
         Node::element(kinds::DOC, content)
     }
 
+    /// A page made for handwriting: a drawing area of `height` CSS pixels
+    /// followed by an empty paragraph.
+    pub fn drawing_doc(height: u32) -> Self {
+        Node::doc(vec![
+            Node::new(kinds::INK_BLOCK).with_attr("inkId", crate::ids::new_id()).with_attr("height", height.max(120)),
+            Node::paragraph(vec![]),
+        ])
+    }
+
     /// An empty document holds one empty paragraph, like a fresh editor.
     pub fn empty_doc() -> Self {
         Node::doc(vec![Node::paragraph(vec![])])

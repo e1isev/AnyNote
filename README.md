@@ -58,7 +58,16 @@ cargo zigbuild --release -p anynote-server --target armv7-unknown-linux-musleabi
 
 Copy the file to the Pi (a USB stick is fine), make it executable (`chmod +x anynote-server`) and run it. The first run adds AnyNote to the applications menu. `anynote-server --help` lists the options (port, data folder, `--no-browser`).
 
-The server listens on 127.0.0.1 only and rejects requests from other web pages (Host, Origin and custom-header checks). `--host 0.0.0.0` exposes it to your network **without a password**, so use that only on a network you trust.
+The server listens on 127.0.0.1 only and rejects requests from other web pages (Host, Origin and custom-header checks).
+
+**Phones and tablets:** Settings → *Use on phone or tablet* opens a second listener on the local network (port + 1) and shows a QR code. Other devices need the secret key in that link (it is then kept in a cookie), so other people on the same Wi-Fi can't read your notes. No internet is needed: a phone hotspot works.
+
+## Touch screens and pens
+
+- New pages start with a drawing area (Settings can turn this off), and a floating pen button adds more.
+- Swipe to scroll. A long sideways swipe opens or closes the notebook drawer; on small screens the notebooks and pages live in that drawer.
+- Pens and fingers are told apart through the Pointer Events `pointerType`. The pen always draws. One finger draws until a pen has been used, then it scrolls (switchable on each drawing). Two fingers always scroll, and touches are ignored while the pen is down (palm rejection).
+- A passive rubber-tip stylus is indistinguishable from a finger to the screen, so it is treated as one.
 
 ## Build from source
 

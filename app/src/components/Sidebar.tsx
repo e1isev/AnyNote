@@ -17,8 +17,13 @@ import {
   Upload,
   ArrowUp,
   ArrowDown,
+  Check,
+  MoreHorizontal,
+  Settings,
+  Smartphone,
 } from "lucide-react";
-import { pickExportFolder, pickImportPath } from "../platform";
+import { isTauri, pickExportFolder, pickImportPath } from "../platform";
+import { fingerDraws, getPrefs, setPrefs, type FingerMode } from "../prefs";
 import { api } from "../api";
 import type { NotebookTree, Section, View } from "../types";
 import { confirmAction, openMenu, promptText, reportError, toast, type MenuEntry } from "../ui/overlay";
@@ -35,6 +40,7 @@ interface Props {
   onChanged: () => void;
   onImported: (notebookIds: string[]) => void;
   onDropPage: (pageId: string, section: Section) => void;
+  onPhone: () => void;
 }
 
 export function Sidebar(props: Props) {
@@ -225,6 +231,31 @@ export function Sidebar(props: Props) {
     ]);
   };
 
+  const settingsMenu = (e: React.MouseEvent) => {
+    const prefs = getPrefs();
+    const tick = (on: boolean) => (on ? <Check size={15} /> : <span />);
+    const finger = (mode: FingerMode, label: string): MenuEntry => ({
+      label,
+      icon: tick(prefs.fingerMode === mode),
+      onSelect: () => setPrefs({ fingerMode: mode }),
+    });
+    const items: MenuEntry[] = [
+      {
+        label: "New pages start with a drawing area",
+        icon: tick(prefs.newPageDrawing),
+        onSelect: () => setPrefs({ newPageDrawing: !prefs.newPageDrawing }),
+      },
+      "separator",
+      finger("auto", `One finger on drawings: automatic (now ${fingerDraws(prefs) ? "draws" : "scrolls"})`),
+      finger("draw", "One finger on drawings: draws"),
+      finger("scroll", "One finger on drawings: scrolls (pen draws)"),
+    ];
+    if (!isTauri) {
+      items.push("separator", { label: "Use on phone or tablet…", icon: <Smartphone size={15} />, onSelect: props.onPhone });
+    }
+    openMenu({ clientX: e.clientX, clientY: e.clientY - 200, preventDefault: () => e.preventDefault() }, items);
+  };
+
   const renderSections = (nb: NotebookTree, parentId: string | null, depth: number) => {
     const siblings = nb.sections.filter((s) => s.parentId === parentId);
     return siblings.map((sec) => {
@@ -265,6 +296,17 @@ export function Sidebar(props: Props) {
             )}
             <span className="section-tab" style={{ background: sec.color ?? nb.color ?? "var(--muted)" }} />
             <span className="tree-label">{sec.title}</span>
+            <button
+              className="icon-btn row-action"
+              title="Section options"
+              aria-label="Section options"
+              onClick={(e) => {
+                e.stopPropagation();
+                sectionMenu(e, nb, sec, siblings);
+              }}
+            >
+              <MoreHorizontal size={14} />
+            </button>
           </div>
           {hasChildren && open && renderSections(nb, sec.id, depth + 1)}
         </div>
@@ -313,6 +355,17 @@ export function Sidebar(props: Props) {
                 <span className="tree-label">{nb.title}</span>
                 <button
                   className="icon-btn row-action"
+                  title="Notebook options"
+                  aria-label="Notebook options"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    notebookMenu(e, nb, index);
+                  }}
+                >
+                  <MoreHorizontal size={14} />
+                </button>
+                <button
+                  className="icon-btn row-action row-add"
                   title="New section"
                   onClick={(e) => {
                     e.stopPropagation();
@@ -359,6 +412,9 @@ export function Sidebar(props: Props) {
             </button>
             <button className="footer-btn" title="New notebook" onClick={() => void newNotebook()}>
               <Plus size={15} /> Notebook
+            </button>
+            <button className="footer-btn" title="Settings" onClick={settingsMenu}>
+              <Settings size={15} /> Settings
             </button>
           </>
         )}

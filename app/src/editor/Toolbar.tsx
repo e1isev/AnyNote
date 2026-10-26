@@ -96,7 +96,15 @@ function ColorPicker(props: {
   );
 }
 
-export function Toolbar({ editor, editMath }: { editor: Editor; editMath: (latex: string) => Promise<string | null> }) {
+export function Toolbar({
+  editor,
+  editMath,
+  onDraw,
+}: {
+  editor: Editor;
+  editMath: (latex: string) => Promise<string | null>;
+  onDraw: () => void;
+}) {
   const s = useEditorState({
     editor,
     selector: ({ editor: e }) => ({
@@ -148,6 +156,18 @@ export function Toolbar({ editor, editMath }: { editor: Editor; editMath: (latex
 
   return (
     <div className="toolbar" role="toolbar" aria-label="Formatting">
+      <div className="tb-group">
+        <button
+          type="button"
+          className="tb-btn tb-draw"
+          title="Draw: add a drawing area for handwriting"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={onDraw}
+        >
+          <PenTool size={16} />
+          <span>Draw</span>
+        </button>
+      </div>
       <div className="tb-group">
         <Btn title="Undo (Ctrl+Z)" disabled={!s.canUndo} onClick={() => chain().undo().run()}>
           <Undo2 size={16} />
@@ -227,9 +247,6 @@ export function Toolbar({ editor, editMath }: { editor: Editor; editMath: (latex
         </Btn>
         <Btn title="Attach a file" onClick={() => pickFiles(editor)}>
           <Paperclip size={16} />
-        </Btn>
-        <Btn title="Ink drawing" onClick={() => chain().insertInk().run()}>
-          <PenTool size={16} />
         </Btn>
         <Btn title="Divider" onClick={() => chain().setHorizontalRule().run()}>
           <Minus size={16} />

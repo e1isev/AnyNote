@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { FilePlus2, Indent, Outdent, Pencil, Plus, Trash2, CornerDownRight } from "lucide-react";
+import { FilePlus2, Indent, Outdent, Pencil, Plus, Trash2, CornerDownRight, MoreHorizontal } from "lucide-react";
 import { api } from "../api";
 import type { Page, Section } from "../types";
 import { relativeTime } from "../time";
@@ -152,6 +152,17 @@ export function PageList({ section, pages, currentPageId, onOpen, onChanged, onN
           >
             <span className={page.title ? "page-title-text" : "page-title-text untitled"}>{page.title || "Untitled page"}</span>
             <span className="page-date">{relativeTime(page.updatedAt)}</span>
+            <button
+              className="icon-btn row-action page-menu"
+              title="Page options"
+              aria-label="Page options"
+              onClick={(e) => {
+                e.stopPropagation();
+                pageMenu(e, page, index);
+              }}
+            >
+              <MoreHorizontal size={15} />
+            </button>
           </div>
         ))}
         <button className="add-page" onClick={() => onNewPage(null)}>

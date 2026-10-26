@@ -3,8 +3,10 @@ import { NodeViewWrapper, ReactNodeViewRenderer, type ReactNodeViewProps } from 
 import { getStroke } from "perfect-freehand";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as Y from "yjs";
-import { Eraser, Highlighter, PenLine, Redo2, Trash2, Undo2 } from "lucide-react";
+import { Eraser, Hand, Highlighter, PenLine, Pointer, Redo2, Trash2, Undo2 } from "lucide-react";
 import { uuid } from "../platform";
+import { defaultDrawingHeight, fingerDraws, getPrefs, hasTouch, setPrefs, usePrefs } from "../prefs";
+import { toast } from "../ui/overlay";
 
 /**
  * A drawing canvas block. Strokes live in the page's Y.Doc under
@@ -96,7 +98,7 @@ function InkView({ node, updateAttributes, editor, extension }: ReactNodeViewPro
   const [size, setSize] = useState(SIZES[1]);
   const [draft, setDraft] = useState<Point[] | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
-  const drawing = useRef<{ points: Point[]; pointerId: number } | null>(null);
+  const drawing = useRef<{ points: Point[]; pointerId: number; pointerType: string } | null>(null);
   const undoRef = useRef<Y.UndoManager | null>(null);
   const [, forceRender] = useState(0);
 
@@ -182,21 +184,105 @@ function InkView({ node, updateAttributes, editor, extension }: ReactNodeViewPro
     }
   };
 
+  // --- touch: one finger draws or scrolls (see prefs.ts), two fingers scroll.
+  const touches = useRef(new Map<number, { x: number; y: number }>());
+  const pan = useRef<{ x: number; y: number; t: number; vx: number; vy: number } | null>(null);
+  const penDown = useRef(false);
+
+  const centroid = () => {
+    let x = 0;
+    let y = 0;
+    touches.current.forEach((p) => {
+      x += p.x;
+      y += p.y;
+    });
+    const n = Math.max(1, touches.current.size);
+    return { x: x / n, y: y / n };
+  };
+
+  const scrollBy = (dx: number, dy: number) => {
+    const page = svgRef.current?.closest(".page-scroll") ?? document.scrollingElement;
+    const side = svgRef.current?.closest(".ink-scroll");
+    if (page) page.scrollTop -= dy;
+    if (side) side.scrollLeft -= dx;
+  };
+
+  /** Keep scrolling briefly after a flick, like native touch scrolling. */
+  const coast = (vx: number, vy: number) => {
+    let last = performance.now();
+    const step = (now: number) => {
+      const dt = now - last;
+      last = now;
+      vx *= Math.pow(0.95, dt / 16);
+      vy *= Math.pow(0.95, dt / 16);
+      if (Math.abs(vx) < 0.02 && Math.abs(vy) < 0.02) return;
+      scrollBy(vx * dt, vy * dt);
+      requestAnimationFrame(step);
+    };
+    if (Math.abs(vx) > 0.2 || Math.abs(vy) > 0.2) requestAnimationFrame(step);
+  };
+
+  const startPan = () => {
+    const c = centroid();
+    pan.current = { x: c.x, y: c.y, t: performance.now(), vx: 0, vy: 0 };
+  };
+
+  const cancelDraft = () => {
+    drawing.current = null;
+    setDraft(null);
+  };
+
   const onPointerDown = (e: React.PointerEvent) => {
-    if (!editable || e.button !== 0) return;
+    if (!editable) return;
+    if (e.pointerType === "touch") {
+      touches.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      e.preventDefault();
+      (e.target as Element).setPointerCapture?.(e.pointerId);
+      if (penDown.current) return; // a palm resting while the pen writes
+      if (touches.current.size >= 2 || !fingerDraws()) {
+        if (drawing.current?.pointerType === "touch") cancelDraft();
+        startPan();
+        return;
+      }
+    } else if (e.button !== 0) {
+      return;
+    }
+    if (e.pointerType === "pen") {
+      penDown.current = true;
+      if (drawing.current?.pointerType === "touch") cancelDraft();
+      if (!getPrefs().penSeen) {
+        setPrefs({ penSeen: true });
+        if (getPrefs().fingerMode === "auto")
+          toast("Pen detected: the pen draws and your finger scrolls. Change this with the hand button on the drawing.");
+      }
+    }
     e.preventDefault();
     (e.target as Element).setPointerCapture?.(e.pointerId);
     const p = localPoint(e);
     if (tool === "eraser") {
-      drawing.current = { points: [], pointerId: e.pointerId };
+      drawing.current = { points: [], pointerId: e.pointerId, pointerType: e.pointerType };
       eraseAt(p[0], p[1]);
       return;
     }
-    drawing.current = { points: [p], pointerId: e.pointerId };
+    drawing.current = { points: [p], pointerId: e.pointerId, pointerType: e.pointerType };
     setDraft([p]);
   };
 
   const onPointerMove = (e: React.PointerEvent) => {
+    if (e.pointerType === "touch" && touches.current.has(e.pointerId)) {
+      touches.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      const pn = pan.current;
+      if (pn) {
+        const c = centroid();
+        const now = performance.now();
+        const dt = Math.max(1, now - pn.t);
+        const dx = c.x - pn.x;
+        const dy = c.y - pn.y;
+        scrollBy(dx, dy);
+        pan.current = { x: c.x, y: c.y, t: now, vx: dx / dt, vy: dy / dt };
+        return;
+      }
+    }
     const d = drawing.current;
     if (!d || d.pointerId !== e.pointerId) return;
     const p = localPoint(e);
@@ -219,6 +305,19 @@ function InkView({ node, updateAttributes, editor, extension }: ReactNodeViewPro
   };
 
   const onPointerUp = (e: React.PointerEvent) => {
+    if (e.pointerType === "pen") penDown.current = false;
+    if (e.pointerType === "touch" && touches.current.delete(e.pointerId)) {
+      const pn = pan.current;
+      if (pn) {
+        if (touches.current.size === 0) {
+          pan.current = null;
+          if (performance.now() - pn.t < 80) coast(pn.vx, pn.vy);
+        } else {
+          startPan();
+        }
+        return;
+      }
+    }
     const d = drawing.current;
     if (!d || d.pointerId !== e.pointerId) return;
     drawing.current = null;
@@ -235,9 +334,9 @@ function InkView({ node, updateAttributes, editor, extension }: ReactNodeViewPro
         pts: encodePoints(points.map(([x, y, p]) => [Math.round(x * 10) / 10, Math.round(y * 10) / 10, p])),
       },
     ]);
-    // Grow the canvas when drawing near the bottom edge.
+    // Grow the canvas when writing near the bottom edge, so there is always room.
     const maxY = Math.max(...points.map(([, y]) => y));
-    if (maxY > height - 40) updateAttributes({ height: Math.round(maxY + 120) });
+    if (maxY > height - 120) updateAttributes({ height: Math.round(maxY + 320) });
   };
 
   const startResize = (e: React.PointerEvent) => {
@@ -262,9 +361,11 @@ function InkView({ node, updateAttributes, editor, extension }: ReactNodeViewPro
 
   const undo = undoRef.current;
   const palette = tool === "highlighter" ? HIGHLIGHTER_COLORS : PEN_COLORS;
+  const prefs = usePrefs();
+  const fingerDrawsNow = fingerDraws(prefs);
 
   return (
-    <NodeViewWrapper className="ink-block" data-drag-handle="">
+    <NodeViewWrapper className="ink-block" data-drag-handle="" data-ink-id={inkId}>
       {editable && (
         <div className="ink-toolbar" contentEditable={false}>
           <button className={tool === "pen" ? "active" : ""} title="Pen" onClick={() => pickTool("pen")}>
@@ -296,6 +397,16 @@ function InkView({ node, updateAttributes, editor, extension }: ReactNodeViewPro
               </button>
             ))}
           <span className="ink-spacer" />
+          {(hasTouch || prefs.penSeen) && (
+            <button
+              className="finger-mode"
+              title="What one finger does on drawings. A pen always draws; two fingers always scroll."
+              onClick={() => setPrefs({ fingerMode: fingerDrawsNow ? "scroll" : "draw" })}
+            >
+              {fingerDrawsNow ? <Pointer size={16} /> : <Hand size={16} />}
+              <span>{fingerDrawsNow ? "Finger draws" : "Finger scrolls"}</span>
+            </button>
+          )}
           <button title="Undo stroke" disabled={!undo?.canUndo()} onClick={() => undo?.undo()}>
             <Undo2 size={16} />
           </button>
@@ -349,7 +460,8 @@ export interface InkOptions {
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
     inkBlock: {
-      insertInk: () => ReturnType;
+      /** Insert a drawing area at the cursor (`inkId` and `height` optional). */
+      insertInk: (attrs?: { inkId?: string; height?: number }) => ReturnType;
     };
   }
 }
@@ -384,10 +496,10 @@ export const InkBlock = Node.create<InkOptions>({
   addCommands() {
     return {
       insertInk:
-        () =>
+        (attrs = {}) =>
         ({ commands }) =>
           commands.insertContent([
-            { type: this.name, attrs: { inkId: uuid(), height: 320 } },
+            { type: this.name, attrs: { inkId: attrs.inkId ?? uuid(), height: attrs.height ?? defaultDrawingHeight() } },
             { type: "paragraph" },
           ]),
     };
