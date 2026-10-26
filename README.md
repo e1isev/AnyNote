@@ -59,6 +59,8 @@ cargo zigbuild --release -p anynote-server --target armv7-unknown-linux-musleabi
 
 Copy the file to the Pi (a USB stick is fine), make it executable (`chmod +x anynote-server`) and run it. The first run adds AnyNote to the applications menu. `anynote-server --help` lists the options (port, data folder, `--no-browser`).
 
+**Nintendo Switch:** with Linux installed ([Switchroot](https://wiki.switchroot.org/) L4T Ubuntu), a Switch is an ARM64 Linux computer with a touch screen. Use the `aarch64-unknown-linux-musl` build. Ubuntu's Chromium is a snap, which can't write to hidden folders, so the server keeps that Chromium's window profile in `~/snap/chromium/common/anynote-profile`.
+
 The server listens on 127.0.0.1 only and rejects requests from other web pages (Host, Origin and custom-header checks).
 
 **Phones and tablets:** Settings → *Use on phone or tablet* opens a second listener on the local network (port + 1) and shows a QR code. Other devices need the secret key in that link (it is then kept in a cookie), so other people on the same Wi-Fi can't read your notes. No internet is needed: a phone hotspot works.

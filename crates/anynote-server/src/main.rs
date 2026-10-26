@@ -505,9 +505,9 @@ fn already_running(port: u16) -> bool {
 /// Open the UI as an app window in Chromium if there is one, else in the
 /// default browser.
 fn open_browser(url: &str, data_dir: &Path) {
-    let profile = data_dir.join("browser-profile");
     for chromium in ["chromium-browser", "chromium", "google-chrome", "google-chrome-stable", "microsoft-edge"] {
-        if find_in_path(chromium).is_some() {
+        if let Some(path) = find_in_path(chromium) {
+            let profile = browser_profile(&path, data_dir);
             let spawned = Command::new(chromium)
                 .arg(format!("--app={url}"))
                 .arg(format!("--user-data-dir={}", profile.display()))
@@ -533,6 +533,27 @@ fn open_browser(url: &str, data_dir: &Path) {
         }
     }
     println!("Open {url} in your web browser.");
+}
+
+/// Where Chromium keeps the AnyNote window's settings. A snap-packaged
+/// Chromium (Ubuntu's) can't write to hidden folders such as ~/.local, so it
+/// gets a folder in its own snap directory instead.
+fn browser_profile(chromium: &Path, data_dir: &Path) -> PathBuf {
+    match std::env::var_os("HOME") {
+        Some(home) if is_snap(chromium) => PathBuf::from(home).join("snap/chromium/common/anynote-profile"),
+        _ => data_dir.join("browser-profile"),
+    }
+}
+
+/// Is this program a snap, or a small script (like Ubuntu's chromium-browser)
+/// that starts one?
+fn is_snap(program: &Path) -> bool {
+    let real = program.canonicalize().unwrap_or_else(|_| program.to_path_buf());
+    if real.starts_with("/snap") || real.file_name().is_some_and(|n| n == "snap") {
+        return true;
+    }
+    std::fs::metadata(&real).is_ok_and(|m| m.len() < 64 * 1024)
+        && std::fs::read(&real).is_ok_and(|b| b.windows(10).any(|w| w == b"/snap/bin/"))
 }
 
 fn find_in_path(program: &str) -> Option<PathBuf> {
@@ -601,5 +622,22 @@ mod tests {
         ev.push(Broadcast { page_id: "p".into(), update: vec![] });
         let got: Value = serde_json::from_str(&waiter.join().unwrap()).unwrap();
         assert_eq!(got["events"].as_array().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn snap_chromium_gets_a_profile_it_can_write() {
+        let dir = tempfile::tempdir().unwrap();
+        let wrapper = dir.path().join("chromium-browser");
+        std::fs::write(&wrapper, "#!/bin/sh\nexec /snap/bin/chromium \"$@\"\n").unwrap();
+        let native = dir.path().join("chromium");
+        std::fs::write(&native, "#!/bin/sh\nexec /usr/lib/chromium/chromium \"$@\"\n").unwrap();
+        assert!(is_snap(&wrapper));
+        assert!(!is_snap(&native));
+        assert!(is_snap(Path::new("/snap/bin/chromium")));
+
+        let data = Path::new("/data");
+        assert_eq!(browser_profile(&native, data), data.join("browser-profile"));
+        let snap_profile = browser_profile(&wrapper, data);
+        assert!(snap_profile.ends_with("snap/chromium/common/anynote-profile"), "{}", snap_profile.display());
     }
 }
