@@ -1,0 +1,456 @@
+{
+  "type": "doc",
+  "content": [
+    {
+      "type": "heading",
+      "attrs": {
+        "id": "block-01",
+        "level": 2
+      },
+      "content": [
+        {
+          "type": "text",
+          "text": "Every block and mark"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "attrs": {
+        "id": "block-02"
+      },
+      "content": [
+        {
+          "type": "text",
+          "text": "bold",
+          "marks": [
+            {
+              "type": "bold"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "text": " "
+        },
+        {
+          "type": "text",
+          "text": "italic",
+          "marks": [
+            {
+              "type": "italic"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "text": " "
+        },
+        {
+          "type": "text",
+          "text": "under",
+          "marks": [
+            {
+              "type": "underline"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "text": " "
+        },
+        {
+          "type": "text",
+          "text": "strike",
+          "marks": [
+            {
+              "type": "strike"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "text": " "
+        },
+        {
+          "type": "text",
+          "text": "code",
+          "marks": [
+            {
+              "type": "code"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "text": " "
+        },
+        {
+          "type": "text",
+          "text": "link",
+          "marks": [
+            {
+              "type": "link",
+              "attrs": {
+                "href": "https://example.com"
+              }
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "text": " "
+        },
+        {
+          "type": "text",
+          "text": "marked",
+          "marks": [
+            {
+              "type": "highlight",
+              "attrs": {
+                "color": "#fff3a3"
+              }
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "text": " "
+        },
+        {
+          "type": "text",
+          "text": "red",
+          "marks": [
+            {
+              "type": "textStyle",
+              "attrs": {
+                "color": "#d93f3f"
+              }
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "text": " H"
+        },
+        {
+          "type": "text",
+          "text": "2",
+          "marks": [
+            {
+              "type": "subscript"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "text": "O x"
+        },
+        {
+          "type": "text",
+          "text": "2",
+          "marks": [
+            {
+              "type": "superscript"
+            }
+          ]
+        },
+        {
+          "type": "hardBreak"
+        },
+        {
+          "type": "text",
+          "text": "ünïcødé 😀 "
+        },
+        {
+          "type": "inlineMath",
+          "attrs": {
+            "latex": "a^2+b^2"
+          }
+        },
+        {
+          "type": "text",
+          "text": " see "
+        },
+        {
+          "type": "wikiLink",
+          "attrs": {
+            "pageId": "0190f0e0-0000-7000-8000-000000000001",
+            "title": "Other page"
+          }
+        }
+      ]
+    },
+    {
+      "type": "bulletList",
+      "attrs": {
+        "id": "block-03"
+      },
+      "content": [
+        {
+          "type": "listItem",
+          "attrs": {
+            "id": "block-04"
+          },
+          "content": [
+            {
+              "type": "paragraph",
+              "attrs": {
+                "id": "block-05"
+              },
+              "content": [
+                {
+                  "type": "text",
+                  "text": "bullet"
+                }
+              ]
+            },
+            {
+              "type": "orderedList",
+              "attrs": {
+                "id": "block-06",
+                "start": 3
+              },
+              "content": [
+                {
+                  "type": "listItem",
+                  "attrs": {
+                    "id": "block-07"
+                  },
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "attrs": {
+                        "id": "block-08"
+                      },
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "third"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "taskList",
+      "attrs": {
+        "id": "block-09"
+      },
+      "content": [
+        {
+          "type": "taskItem",
+          "attrs": {
+            "checked": true,
+            "id": "block-10"
+          },
+          "content": [
+            {
+              "type": "paragraph",
+              "attrs": {
+                "id": "block-11"
+              },
+              "content": [
+                {
+                  "type": "text",
+                  "text": "done"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "taskItem",
+          "attrs": {
+            "checked": false,
+            "id": "block-12"
+          },
+          "content": [
+            {
+              "type": "paragraph",
+              "attrs": {
+                "id": "block-13"
+              },
+              "content": [
+                {
+                  "type": "text",
+                  "text": "todo"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "codeBlock",
+      "attrs": {
+        "id": "block-14",
+        "language": "rust"
+      },
+      "content": [
+        {
+          "type": "text",
+          "text": "fn main() {\n    println!(\"hi\");\n}"
+        }
+      ]
+    },
+    {
+      "type": "blockquote",
+      "attrs": {
+        "id": "block-15"
+      },
+      "content": [
+        {
+          "type": "paragraph",
+          "attrs": {
+            "id": "block-16"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "quoted"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "horizontalRule",
+      "attrs": {
+        "id": "block-17"
+      }
+    },
+    {
+      "type": "image",
+      "attrs": {
+        "alt": "A figure",
+        "id": "block-18",
+        "src": "anynote://asset/0000000000000000000000000000000000000000000000000000000000000000",
+        "width": 320
+      }
+    },
+    {
+      "type": "table",
+      "attrs": {
+        "id": "block-19"
+      },
+      "content": [
+        {
+          "type": "tableRow",
+          "content": [
+            {
+              "type": "tableHeader",
+              "attrs": {
+                "colspan": 1,
+                "rowspan": 1
+              },
+              "content": [
+                {
+                  "type": "paragraph",
+                  "attrs": {
+                    "id": "block-20"
+                  },
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "A"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableHeader",
+              "attrs": {
+                "colspan": 1,
+                "rowspan": 1
+              },
+              "content": [
+                {
+                  "type": "paragraph",
+                  "attrs": {
+                    "id": "block-21"
+                  },
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "B"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "tableRow",
+          "content": [
+            {
+              "type": "tableCell",
+              "attrs": {
+                "colspan": 2,
+                "colwidth": [
+                  120,
+                  80
+                ],
+                "rowspan": 1
+              },
+              "content": [
+                {
+                  "type": "paragraph",
+                  "attrs": {
+                    "id": "block-22"
+                  },
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "wide"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "blockMath",
+      "attrs": {
+        "id": "block-23",
+        "latex": "\\int_0^1 x^2 dx"
+      }
+    },
+    {
+      "type": "inkBlock",
+      "attrs": {
+        "height": 240,
+        "id": "block-24",
+        "inkId": "ink-1"
+      }
+    },
+    {
+      "type": "attachment",
+      "attrs": {
+        "id": "block-25",
+        "mime": "application/pdf",
+        "name": "report.pdf",
+        "size": 12345,
+        "src": "anynote://asset/1111111111111111111111111111111111111111111111111111111111111111"
+      }
+    },
+    {
+      "type": "paragraph",
+      "attrs": {
+        "id": "block-26"
+      }
+    }
+  ]
+}

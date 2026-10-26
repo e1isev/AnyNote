@@ -1,0 +1,20 @@
+[package]
+name = "anynote-core"
+description = "AnyNote core: block model, CRDT page documents, SQLite storage, search and the open folder format"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+thiserror.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+yrs.workspace = true
+rusqlite.workspace = true
+uuid.workspace = true
+blake3.workspace = true
+pulldown-cmark.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

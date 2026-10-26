@@ -1,0 +1,23 @@
+[package]
+name = "anynote-app"
+description = "AnyNote desktop app"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+name = "anynote_app_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.7", features = [] }
+
+[dependencies]
+anynote-core.workspace = true
+anynote-onenote.workspace = true
+anyhow.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tauri = { version = "2.12", features = [] }
+tauri-plugin-dialog = "2.8"
+tauri-plugin-opener = "2.7"

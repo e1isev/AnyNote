@@ -1,0 +1,18 @@
+[package]
+name = "anynote-onenote"
+description = "One-way importer from OneNote (.one/.onetoc2/.onepkg) into the AnyNote block model"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+anynote-core.workspace = true
+anyhow.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+onenote_parser = { workspace = true, features = ["onepkg"] }
+typed-path = "0.12"
+time = "0.3"
+
+[dev-dependencies]
+tempfile.workspace = true
