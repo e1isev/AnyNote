@@ -8,8 +8,11 @@ import { listen } from "@tauri-apps/api/event";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { promptText } from "./ui/overlay";
+import { demoAssetUrl, demoCall, demoSubscribe } from "./demo/backend";
 
 export const isTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+/** The online demo: everything runs in this browser (built with VITE_DEMO=1). */
+export const isDemo = import.meta.env.VITE_DEMO === "1";
 
 /** Call a backend command. A `Uint8Array` body is sent as raw bytes. */
 export async function call<T>(
@@ -17,6 +20,7 @@ export async function call<T>(
   args?: Record<string, unknown> | Uint8Array,
   options?: { headers?: Record<string, string> },
 ): Promise<T> {
+  if (isDemo) return demoCall<T>(cmd, args, options);
   if (isTauri) return invoke<T>(cmd, args as never, options?.headers ? { headers: options.headers } : undefined);
   const binary = args instanceof Uint8Array;
   const res = await fetch(`/api/${cmd}`, {
@@ -66,6 +70,7 @@ async function pollLoop() {
 
 /** Subscribe to `page-update` events; resolves to an unsubscribe function. */
 export async function onPageUpdate(cb: Listener): Promise<() => void> {
+  if (isDemo) return demoSubscribe(cb);
   if (isTauri) return listen<PageUpdateEvent>("page-update", (event) => cb(event.payload));
   webListeners.add(cb);
   if (!polling) {
@@ -77,6 +82,7 @@ export async function onPageUpdate(cb: Listener): Promise<() => void> {
 
 /** URL the webview can load for an `anynote://asset/<hash>` reference. */
 export function assetUrl(hash: string): string {
+  if (isDemo) return demoAssetUrl(hash);
   if (!isTauri) return `/asset/${hash}`;
   const windows = /windows/i.test(navigator.userAgent);
   return windows ? `http://anynote.localhost/asset/${hash}` : `anynote://localhost/asset/${hash}`;
@@ -141,12 +147,4 @@ export async function saveAttachment(hash: string, name: string): Promise<void> 
   a.remove();
 }
 
-/** A random UUID, also on browsers without `crypto.randomUUID`. */
-export function uuid(): string {
-  if (typeof crypto.randomUUID === "function") return crypto.randomUUID();
-  const b = crypto.getRandomValues(new Uint8Array(16));
-  b[6] = (b[6] & 0x0f) | 0x40;
-  b[8] = (b[8] & 0x3f) | 0x80;
-  const h = Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
-  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
-}
+export { uuid } from "./uuid";

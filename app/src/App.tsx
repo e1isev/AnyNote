@@ -11,9 +11,10 @@ import { TrashView } from "./components/TrashView";
 import { setPageTitle } from "./pageTitles";
 import { defaultDrawingHeight, getPrefs } from "./prefs";
 import type { NotebookTree, Page, Section, View } from "./types";
-import { OverlayHost, reportError } from "./ui/overlay";
+import { OverlayHost, reportError, toast } from "./ui/overlay";
 import { useLongSwipe, useMediaQuery } from "./touch";
 import { PhoneDialog } from "./components/PhoneDialog";
+import { isDemo } from "./platform";
 
 function load<T>(key: string, fallback: T): T {
   try {
@@ -109,6 +110,10 @@ export function App() {
     },
     [openPage, refreshPages],
   );
+
+  useEffect(() => {
+    if (isDemo) toast("Online demo: your notes are saved only in this browser, on this device.");
+  }, []);
 
   // First load: reopen the last page, else the first section.
   useEffect(() => {

@@ -22,11 +22,18 @@
   --radius: 8px;
   --font: "Inter", system-ui, -apple-system, "Segoe UI", "Cantarell", "Noto Sans", Roboto, sans-serif;
   --mono: "JetBrains Mono", "Fira Code", "DejaVu Sans Mono", ui-monospace, monospace;
+  --hl-comment: #8b919a;
+  --hl-keyword: #cf222e;
+  --hl-string: #0a7a3e;
+  --hl-number: #0550ae;
+  --hl-title: #8250df;
+  --hl-type: #953800;
+  --hl-variable: #24292f;
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #17181c;
     --bg-sidebar: #1d1e23;
     --bg-list: #1a1b20;
@@ -46,7 +53,43 @@
     --mark: #5c4d00;
     --shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.4);
     color-scheme: dark;
+    --hl-comment: #8b919a;
+    --hl-keyword: #ff7b72;
+    --hl-string: #7ee787;
+    --hl-number: #79c0ff;
+    --hl-title: #d2a8ff;
+    --hl-type: #ffa657;
+    --hl-variable: #e6e7ea;
   }
+}
+
+:root[data-theme="dark"] {
+  --bg: #17181c;
+  --bg-sidebar: #1d1e23;
+  --bg-list: #1a1b20;
+  --bg-hover: rgba(255, 255, 255, 0.06);
+  --bg-active: rgba(150, 125, 255, 0.2);
+  --bg-input: #22242a;
+  --bg-code: #22242a;
+  --bg-elevated: #24262c;
+  --text: #e6e7ea;
+  --text-soft: #b6bac2;
+  --muted: #7d828c;
+  --border: #2c2e35;
+  --border-strong: #3a3d45;
+  --accent: #967dff;
+  --accent-text: #b3a1ff;
+  --accent-soft: rgba(150, 125, 255, 0.18);
+  --mark: #5c4d00;
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.4);
+  color-scheme: dark;
+  --hl-comment: #8b919a;
+  --hl-keyword: #ff7b72;
+  --hl-string: #7ee787;
+  --hl-number: #79c0ff;
+  --hl-title: #d2a8ff;
+  --hl-type: #ffa657;
+  --hl-variable: #e6e7ea;
 }
 
 * {
@@ -175,14 +218,14 @@ kbd {
 .app {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
-  height: 100vh;
+  height: 100%;
 }
 
 /* Notebooks + pages. On wide screens a column that can be hidden; on small
    screens a drawer that slides over the page. */
 .nav {
   display: flex;
-  height: 100vh;
+  height: 100%;
   min-height: 0;
 }
 
@@ -245,7 +288,7 @@ kbd {
 .main {
   position: relative;
   min-width: 0;
-  height: 100vh;
+  height: 100%;
   overflow: hidden;
 }
 
@@ -983,61 +1026,35 @@ kbd {
 /* syntax highlighting (highlight.js classes from lowlight) */
 .hljs-comment,
 .hljs-quote {
-  color: #8b919a;
+  color: var(--hl-comment);
   font-style: italic;
 }
 .hljs-keyword,
 .hljs-selector-tag,
 .hljs-built_in {
-  color: #cf222e;
+  color: var(--hl-keyword);
 }
 .hljs-string,
 .hljs-attr,
 .hljs-template-tag {
-  color: #0a7a3e;
+  color: var(--hl-string);
 }
 .hljs-number,
 .hljs-literal {
-  color: #0550ae;
+  color: var(--hl-number);
 }
 .hljs-title,
 .hljs-section,
 .hljs-function .hljs-title {
-  color: #8250df;
+  color: var(--hl-title);
 }
 .hljs-type,
 .hljs-class .hljs-title {
-  color: #953800;
+  color: var(--hl-type);
 }
 .hljs-variable,
 .hljs-params {
-  color: #24292f;
-}
-@media (prefers-color-scheme: dark) {
-  .hljs-keyword,
-  .hljs-selector-tag,
-  .hljs-built_in {
-    color: #ff7b72;
-  }
-  .hljs-string,
-  .hljs-attr {
-    color: #7ee787;
-  }
-  .hljs-number,
-  .hljs-literal {
-    color: #79c0ff;
-  }
-  .hljs-title,
-  .hljs-section {
-    color: #d2a8ff;
-  }
-  .hljs-type {
-    color: #ffa657;
-  }
-  .hljs-variable,
-  .hljs-params {
-    color: #e6e7ea;
-  }
+  color: var(--hl-variable);
 }
 
 /* ------------------------------------------------------------------ ink */
@@ -1080,6 +1097,11 @@ kbd {
 .ink-toolbar button {
   border: none;
   padding: 4px;
+}
+
+/* Keep tool sizes; a narrow toolbar scrolls sideways instead. */
+.ink-toolbar > * {
+  flex: none;
 }
 
 .ink-toolbar button.active {

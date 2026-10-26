@@ -22,7 +22,7 @@ import {
   Settings,
   Smartphone,
 } from "lucide-react";
-import { isTauri, pickExportFolder, pickImportPath } from "../platform";
+import { isDemo, isTauri, pickExportFolder, pickImportPath } from "../platform";
 import { fingerDraws, getPrefs, setPrefs, type FingerMode } from "../prefs";
 import { api } from "../api";
 import type { NotebookTree, Section, View } from "../types";
@@ -250,7 +250,7 @@ export function Sidebar(props: Props) {
       finger("draw", "One finger on drawings: draws"),
       finger("scroll", "One finger on drawings: scrolls (pen draws)"),
     ];
-    if (!isTauri) {
+    if (!isTauri && !isDemo) {
       items.push("separator", { label: "Use on phone or tablet…", icon: <Smartphone size={15} />, onSelect: props.onPhone });
     }
     openMenu({ clientX: e.clientX, clientY: e.clientY - 200, preventDefault: () => e.preventDefault() }, items);

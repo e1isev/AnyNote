@@ -15,4 +15,9 @@ fn main() {
         empty
     };
     println!("cargo:rustc-env=ANYNOTE_UI_DIR={}", dir.display());
+    // index.html names the content-hashed bundles, so it fingerprints the UI.
+    // A changed value makes cargo recompile, re-embedding the new files.
+    let index = std::fs::read(dir.join("index.html")).unwrap_or_default();
+    let stamp = index.iter().fold(0xcbf29ce484222325u64, |h, b| (h ^ u64::from(*b)).wrapping_mul(0x100000001b3));
+    println!("cargo:rustc-env=ANYNOTE_UI_STAMP={stamp:016x}");
 }

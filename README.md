@@ -62,6 +62,8 @@ The server listens on 127.0.0.1 only and rejects requests from other web pages (
 
 **Phones and tablets:** Settings → *Use on phone or tablet* opens a second listener on the local network (port + 1) and shows a QR code. Other devices need the secret key in that link (it is then kept in a cookie), so other people on the same Wi-Fi can't read your notes. No internet is needed: a phone hotspot works.
 
+**Online demo:** `npm run build:demo` in `app/` builds a single self-contained page (`app/demo-page/anynote-demo.html`). It is the same UI with an in-browser backend (`app/src/demo/backend.ts`) that keeps notes in the browser's local storage. It's meant for trying the app on a phone, and has no import or export.
+
 ## Touch screens and pens
 
 - New pages start with a drawing area (Settings can turn this off), and a floating pen button adds more.

@@ -54,7 +54,7 @@ fn parse_args() -> Result<Options, String> {
             "--data-dir" => o.data_dir = PathBuf::from(value("--data-dir")?),
             "--no-browser" => o.browser = false,
             "--version" | "-V" => {
-                println!("anynote-server {}", env!("CARGO_PKG_VERSION"));
+                println!("anynote-server {} (ui {})", env!("CARGO_PKG_VERSION"), env!("ANYNOTE_UI_STAMP"));
                 std::process::exit(0);
             }
             "--help" | "-h" => {
