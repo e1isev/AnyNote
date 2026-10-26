@@ -158,7 +158,8 @@ fn export_section(
         let rel_assets = format!("{}assets", "../".repeat(depth));
 
         // Copy referenced assets and ink renders into the notebook's assets folder.
-        let mut page_ctx = PageExport { store, ctx, rel_assets: &rel_assets, ink: &ink, error: None };
+        let mut page_ctx =
+            PageExport { store, page_id: &page.id, ctx, rel_assets: &rel_assets, ink: &ink, error: None };
         let mut body = format!("# {}\n\n", markdown::escape(&page.title));
         body.push_str(&markdown::to_markdown(&doc, &mut page_ctx));
         if let Some(e) = page_ctx.error.take() {
@@ -213,6 +214,7 @@ fn export_section(
 
 struct PageExport<'a> {
     store: &'a Store,
+    page_id: &'a str,
     ctx: &'a mut NotebookExport,
     rel_assets: &'a str,
     ink: &'a BTreeMap<String, Vec<Stroke>>,
@@ -250,8 +252,13 @@ impl ExportContext for PageExport<'_> {
     }
 
     fn ink(&mut self, ink_id: &str) -> Option<String> {
-        let strokes = self.ink.get(ink_id)?;
-        let name = format!("ink-{}.svg", file_name(ink_id));
+        let strokes = self.ink.get(ink_id).filter(|s| !s.is_empty())?;
+        // Every canvas page uses the same key, so name its drawing after the page.
+        let name = if ink_id == crate::node::CANVAS_INK {
+            format!("ink-{}.svg", file_name(self.page_id))
+        } else {
+            format!("ink-{}.svg", file_name(ink_id))
+        };
         if self.ctx.written.insert(name.clone()) {
             if let Err(e) = fs::create_dir_all(&self.ctx.assets_dir)
                 .and_then(|_| fs::write(self.ctx.assets_dir.join(&name), strokes_to_svg(strokes)))

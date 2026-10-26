@@ -125,6 +125,12 @@ fn sample() -> Node {
             .with_attr("name", "report.pdf")
             .with_attr("size", 12345)
             .with_attr("mime", "application/pdf"),
+        Node::canvas_box(
+            40,
+            60,
+            320,
+            vec![p(vec![text("on a canvas")]), Node::element(kinds::BLOCKQUOTE, vec![p(vec![text("nested")])])],
+        ),
         p(vec![]),
     ]);
     // Deterministic block ids so the fixture is stable.

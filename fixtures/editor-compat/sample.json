@@ -447,9 +447,52 @@
       }
     },
     {
+      "type": "canvasBox",
+      "attrs": {
+        "id": "block-26",
+        "width": 320,
+        "x": 40,
+        "y": 60
+      },
+      "content": [
+        {
+          "type": "paragraph",
+          "attrs": {
+            "id": "block-27"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "on a canvas"
+            }
+          ]
+        },
+        {
+          "type": "blockquote",
+          "attrs": {
+            "id": "block-28"
+          },
+          "content": [
+            {
+              "type": "paragraph",
+              "attrs": {
+                "id": "block-29"
+              },
+              "content": [
+                {
+                  "type": "text",
+                  "text": "nested"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
       "type": "paragraph",
       "attrs": {
-        "id": "block-26"
+        "id": "block-30"
       }
     }
   ]

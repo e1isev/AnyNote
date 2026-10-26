@@ -15,7 +15,7 @@ AnyNote follows the build plan in [docs/PLAN.md](docs/PLAN.md). It keeps OneNote
 | No Markdown, weak code support | Markdown shortcuts, syntax-highlighted code blocks, LaTeX math (KaTeX) |
 | Weak linking between pages | `[[wiki links]]` stored by page id, so renames never break them; backlinks panel |
 | Tags are flat; to-dos are hard to find | `#tags` anywhere in the text, a tag browser, and one Tasks view across every notebook (tick tasks there and the page updates) |
-| Free canvas leaves stray text boxes | Doc-first pages, with ink drawing blocks where you want them |
+| Free canvas leaves stray text boxes | Canvas pages tidy away empty boxes and export in reading order; document pages are there when you want a plain flow |
 | API can't read ink | Ink is plain vector data in the page document, and is exported as SVG |
 
 ### Features
@@ -23,7 +23,8 @@ AnyNote follows the build plan in [docs/PLAN.md](docs/PLAN.md). It keeps OneNote
 - Notebooks with colour coding, nested sections (section groups), and pages with subpages
 - Rich text with headings, lists, to-dos, quotes, tables, links, highlight and text colour, sub/superscript
 - Code blocks with syntax highlighting, and inline and display math
-- Ink blocks with pen (pressure-sensitive), highlighter and stroke eraser, saved as vector strokes
+- Canvas pages: write, draw and type anywhere on an open page, with pinch and Ctrl+wheel zoom. Text goes into boxes you can drag and resize.
+- Pen (pressure-sensitive), highlighter and stroke eraser, saved as vector strokes, on canvas pages or as drawing blocks in document pages
 - Images and file attachments (paste or drag & drop). Audio and video play inline.
 - `/` slash menu for any block, and `[[` to link or create a page
 - Full-text search (Ctrl+K) with highlighted snippets
@@ -66,10 +67,11 @@ The server listens on 127.0.0.1 only and rejects requests from other web pages (
 
 ## Touch screens and pens
 
-- New pages start with a drawing area (Settings can turn this off), and a floating pen button adds more.
+- New pages are open canvases. The pen is the default tool, so you can write straight away. Tap the **T** tool, or just start typing, to add text where you last touched. Double-click text to edit it. Settings can make new pages documents instead, which have a floating pen button for drawing blocks.
+- Pinch with two fingers to zoom and move around a canvas. The zoom box in the corner goes back to 100% or shows everything.
 - Swipe to scroll. A long sideways swipe opens or closes the notebook drawer; on small screens the notebooks and pages live in that drawer.
-- Pens and fingers are told apart through the Pointer Events `pointerType`. The pen always draws. One finger draws until a pen has been used, then it scrolls (switchable on each drawing). Two fingers always scroll, and touches are ignored while the pen is down (palm rejection).
-- A passive rubber-tip stylus is indistinguishable from a finger to the screen, so it is treated as one.
+- Pens and fingers are told apart through the Pointer Events `pointerType`. The pen always draws. One finger draws until a pen has been used, then it moves the page (switchable from the drawing toolbar). Two fingers always move and zoom, and touches are ignored while the pen is down (palm rejection).
+- A passive rubber-tip stylus is indistinguishable from a finger to the screen, so it is treated as one. Pen-only features need an active pen: a screen with a pen digitizer (Wacom EMR or AES, USI, Microsoft Pen Protocol) or a USB drawing tablet such as a Wacom, XP-Pen or Huion, which Linux reports as a pen with pressure.
 
 ## Build from source
 

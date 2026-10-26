@@ -10,11 +10,11 @@ interface Prefs {
   fingerMode: FingerMode;
   /** A pen (stylus reported as `pointerType: "pen"`) has been used here. */
   penSeen: boolean;
-  /** New pages start with a drawing area, for handwritten notes. */
-  newPageDrawing: boolean;
+  /** New pages are open canvases (write and type anywhere) or documents. */
+  newPageLayout: "canvas" | "document";
 }
 
-const DEFAULTS: Prefs = { fingerMode: "auto", penSeen: false, newPageDrawing: true };
+const DEFAULTS: Prefs = { fingerMode: "auto", penSeen: false, newPageLayout: "canvas" };
 
 function load(): Prefs {
   try {

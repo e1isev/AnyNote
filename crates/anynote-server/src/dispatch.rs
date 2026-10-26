@@ -4,7 +4,7 @@
 use std::path::Path;
 
 use anynote_core::store::Placement;
-use anynote_core::{folder, markdown, Store};
+use anynote_core::{folder, markdown, Node, Store};
 use serde::Serialize;
 use serde_json::{json, Map, Value};
 
@@ -108,18 +108,19 @@ pub fn dispatch(store: &mut Store, data_dir: &Path, req: Request, broadcasts: &m
         "list_pages" => to_json(store.list_pages(a.str("sectionId")?).map_err(err)?),
         "create_page" => {
             let placement = a.opt("after").map_or(Placement::End, |x| Placement::After(x.into()));
-            let (section, parent, title) = (a.str("sectionId")?, a.opt("parentId"), a.opt("title").unwrap_or(""));
-            if a.bool("ink") {
-                let height = req.args.get("inkHeight").and_then(Value::as_u64).unwrap_or(640) as u32;
-                let doc = anynote_core::Node::drawing_doc(height);
-                to_json(
-                    store
-                        .create_page_with_content(section, parent, title, placement, &doc, &Default::default(), None)
-                        .map_err(err)?,
+            let doc = if a.bool("canvas") { Node::canvas_doc() } else { Node::empty_doc() };
+            let page = store
+                .create_page_with_content(
+                    a.str("sectionId")?,
+                    a.opt("parentId"),
+                    a.opt("title").unwrap_or(""),
+                    placement,
+                    &doc,
+                    &Default::default(),
+                    None,
                 )
-            } else {
-                to_json(store.create_page(section, parent, title, placement).map_err(err)?)
-            }
+                .map_err(err)?;
+            to_json(page)
         }
         "get_page" => {
             let id = a.str("id")?;

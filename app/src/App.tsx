@@ -9,7 +9,7 @@ import { TasksView } from "./components/TasksView";
 import { TagsView } from "./components/TagsView";
 import { TrashView } from "./components/TrashView";
 import { setPageTitle } from "./pageTitles";
-import { defaultDrawingHeight, getPrefs } from "./prefs";
+import { getPrefs } from "./prefs";
 import type { NotebookTree, Page, Section, View } from "./types";
 import { OverlayHost, reportError, toast } from "./ui/overlay";
 import { useLongSwipe, useMediaQuery } from "./touch";
@@ -165,12 +165,10 @@ export function App() {
       const sec = sectionRef.current;
       if (!sec) return;
       try {
-        const { newPageDrawing } = getPrefs();
         const page = await api.createPage(sec.id, {
           parentId: parentId ?? null,
           after,
-          ink: newPageDrawing,
-          inkHeight: defaultDrawingHeight(),
+          canvas: getPrefs().newPageLayout === "canvas",
         });
         await openPage(page.id);
       } catch (e) {

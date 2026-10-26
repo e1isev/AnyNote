@@ -30,10 +30,39 @@ impl ExportContext for PlainExport {}
 
 pub fn to_markdown(doc: &Node, ctx: &mut dyn ExportContext) -> String {
     let mut w = Writer { out: String::new(), ctx };
-    w.blocks(&doc.content, "");
+    if doc.is_canvas() {
+        w.blocks(&canvas_reading_order(doc), "");
+        // The page-wide drawing comes after the text.
+        if let Some(md) = w.ctx.ink(crate::node::CANVAS_INK) {
+            w.out.push('\n');
+            w.line("", &md);
+        }
+    } else {
+        w.blocks(&doc.content, "");
+    }
     let mut out = w.out.trim_end().to_string();
     out.push('\n');
     out
+}
+
+/// A canvas page's blocks in reading order: boxes top to bottom (boxes
+/// within 24 px of each other count as one row, read left to right), empty
+/// boxes skipped.
+pub fn canvas_reading_order(doc: &Node) -> Vec<Node> {
+    let pos = |n: &Node, k: &str| n.attr(k).and_then(Value::as_f64).unwrap_or(0.0);
+    let mut boxes: Vec<&Node> = doc
+        .content
+        .iter()
+        .filter(|n| n.is(kinds::CANVAS_BOX))
+        .filter(|b| b.content.iter().any(|c| !c.is(kinds::PARAGRAPH) || !c.content.is_empty()))
+        .collect();
+    boxes.sort_by(|a, b| {
+        let (ra, rb) = ((pos(a, "y") / 24.0).floor(), (pos(b, "y") / 24.0).floor());
+        ra.total_cmp(&rb).then(pos(a, "x").total_cmp(&pos(b, "x")))
+    });
+    let mut blocks: Vec<Node> = boxes.into_iter().flat_map(|b| b.content.iter().cloned()).collect();
+    blocks.extend(doc.content.iter().filter(|n| !n.is(kinds::CANVAS_BOX)).cloned());
+    blocks
 }
 
 struct Writer<'a> {
@@ -872,6 +901,17 @@ mod tests {
         let link = p.content.iter().find(|n| n.is(kinds::WIKI_LINK)).unwrap();
         assert_eq!(link.attr_str("target"), Some("Target"));
         assert_eq!(link.attr_str("title"), Some("Shown"));
+    }
+
+    #[test]
+    fn canvas_pages_export_in_reading_order() {
+        let doc = Node::doc(vec![
+            Node::canvas_box(300, 400, 200, vec![Node::paragraph(vec![Node::text("last")])]),
+            Node::canvas_box(400, 10, 200, vec![Node::paragraph(vec![Node::text("top right")])]),
+            Node::canvas_box(0, 0, 200, vec![]),
+            Node::canvas_box(20, 20, 200, vec![Node::paragraph(vec![Node::text("top left")])]),
+        ]);
+        assert_eq!(md(&doc), "top left\n\ntop right\n\nlast\n");
     }
 
     #[test]

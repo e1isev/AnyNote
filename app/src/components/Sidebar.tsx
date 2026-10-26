@@ -241,14 +241,19 @@ export function Sidebar(props: Props) {
     });
     const items: MenuEntry[] = [
       {
-        label: "New pages start with a drawing area",
-        icon: tick(prefs.newPageDrawing),
-        onSelect: () => setPrefs({ newPageDrawing: !prefs.newPageDrawing }),
+        label: "New pages: open canvas (write and type anywhere)",
+        icon: tick(prefs.newPageLayout === "canvas"),
+        onSelect: () => setPrefs({ newPageLayout: "canvas" }),
+      },
+      {
+        label: "New pages: document (typed, top to bottom)",
+        icon: tick(prefs.newPageLayout === "document"),
+        onSelect: () => setPrefs({ newPageLayout: "document" }),
       },
       "separator",
-      finger("auto", `One finger on drawings: automatic (now ${fingerDraws(prefs) ? "draws" : "scrolls"})`),
-      finger("draw", "One finger on drawings: draws"),
-      finger("scroll", "One finger on drawings: scrolls (pen draws)"),
+      finger("auto", `One finger: automatic (now ${fingerDraws(prefs) ? "draws" : "moves the page"})`),
+      finger("draw", "One finger draws"),
+      finger("scroll", "One finger moves the page (pen draws)"),
     ];
     if (!isTauri && !isDemo) {
       items.push("separator", { label: "Use on phone or tablet…", icon: <Smartphone size={15} />, onSelect: props.onPhone });

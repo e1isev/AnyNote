@@ -33,6 +33,8 @@ pub mod kinds {
     pub const BLOCK_MATH: &str = "blockMath";
     pub const INK_BLOCK: &str = "inkBlock";
     pub const ATTACHMENT: &str = "attachment";
+    /// A free-positioned text box on a canvas page (`x`, `y`, `width` in px).
+    pub const CANVAS_BOX: &str = "canvasBox";
     // inline
     pub const TEXT: &str = "text";
     pub const HARD_BREAK: &str = "hardBreak";
@@ -71,7 +73,11 @@ pub const BLOCK_ID_TYPES: &[&str] = &[
     kinds::BLOCK_MATH,
     kinds::INK_BLOCK,
     kinds::ATTACHMENT,
+    kinds::CANVAS_BOX,
 ];
+
+/// Key of a canvas page's page-wide drawing in the ink map.
+pub const CANVAS_INK: &str = "canvas";
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Mark {
@@ -123,13 +129,22 @@ impl Node {
         Node::element(kinds::DOC, content)
     }
 
-    /// A page made for handwriting: a drawing area of `height` CSS pixels
-    /// followed by an empty paragraph.
-    pub fn drawing_doc(height: u32) -> Self {
-        Node::doc(vec![
-            Node::new(kinds::INK_BLOCK).with_attr("inkId", crate::ids::new_id()).with_attr("height", height.max(120)),
-            Node::paragraph(vec![]),
-        ])
+    /// A text box on a canvas page at `(x, y)`, `width` px wide.
+    pub fn canvas_box(x: i64, y: i64, width: i64, blocks: Vec<Node>) -> Self {
+        let blocks = if blocks.is_empty() { vec![Node::paragraph(vec![])] } else { blocks };
+        Node::element(kinds::CANVAS_BOX, blocks).with_attr("x", x).with_attr("y", y).with_attr("width", width)
+    }
+
+    /// An empty canvas page: an open drawing surface (strokes live under
+    /// [`CANVAS_INK`] in the ink map) with text in positioned boxes. It holds
+    /// one empty box, which the editor reuses for the first text typed.
+    pub fn canvas_doc() -> Self {
+        Node::doc(vec![Node::canvas_box(48, 48, 480, vec![])])
+    }
+
+    /// Is this `doc` a canvas page (its blocks are positioned boxes)?
+    pub fn is_canvas(&self) -> bool {
+        self.content.iter().any(|n| n.is(kinds::CANVAS_BOX))
     }
 
     /// An empty document holds one empty paragraph, like a fresh editor.
@@ -272,7 +287,8 @@ impl Node {
     /// block (the editor's TrailingNode). Otherwise merely opening a page
     /// would write a change.
     pub fn prepare_for_editor(&mut self) {
-        if !self.content.last().is_some_and(|n| n.is(kinds::PARAGRAPH)) {
+        // Canvas pages end with a box; the editor adds nothing after one.
+        if !self.content.last().is_some_and(|n| n.is(kinds::PARAGRAPH) || n.is(kinds::CANVAS_BOX)) {
             self.content.push(Node::paragraph(vec![]));
         }
         self.ensure_block_ids();
@@ -344,6 +360,16 @@ mod tests {
         assert!(doc.content.iter().all(|n| n.attr_str("id").is_some()));
         doc.prepare_for_editor();
         assert_eq!(doc.content.len(), 2, "idempotent");
+    }
+
+    #[test]
+    fn canvas_pages_need_no_trailing_paragraph() {
+        let mut doc = Node::canvas_doc();
+        assert!(doc.is_canvas());
+        doc.prepare_for_editor();
+        assert_eq!(doc.content.len(), 1);
+        assert_eq!(doc.content[0].attr_i64("x"), Some(48));
+        assert!(!Node::empty_doc().is_canvas());
     }
 
     #[test]

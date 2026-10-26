@@ -52,15 +52,14 @@ export const api = {
   listPages: (sectionId: string) => invoke<Page[]>("list_pages", { sectionId }),
   createPage: (
     sectionId: string,
-    opts: { parentId?: string | null; title?: string; after?: string; ink?: boolean; inkHeight?: number } = {},
+    opts: { parentId?: string | null; title?: string; after?: string; canvas?: boolean } = {},
   ) =>
     invoke<Page>("create_page", {
       sectionId,
       parentId: opts.parentId ?? null,
       title: opts.title ?? "",
       after: opts.after,
-      ink: opts.ink ?? false,
-      inkHeight: opts.inkHeight,
+      canvas: opts.canvas ?? false,
     }),
   getPage: (id: string) => invoke<[Page, PageRef]>("get_page", { id }),
   renamePage: (id: string, title: string) => invoke<Page>("rename_page", { id, title }),

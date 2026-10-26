@@ -26,6 +26,7 @@ Pages are ProseMirror documents. JSON looks like `{"type": "paragraph", "attrs":
 | `blockMath` | `id`, `latex` | |
 | `inkBlock` | `id`, `inkId`, `height`, `width` | |
 | `attachment` | `id`, `src`, `name`, `size`, `mime` | |
+| `canvasBox` | `id`, `x`, `y`, `width` (whole CSS px) | block+ |
 | `hardBreak` (inline) | | |
 | `inlineMath` (inline) | `latex` | |
 | `wikiLink` (inline) | `pageId`, `title` | |
@@ -33,6 +34,10 @@ Pages are ProseMirror documents. JSON looks like `{"type": "paragraph", "attrs":
 Marks: `bold`, `italic`, `underline`, `strike`, `code`, `subscript`, `superscript`, `link {href, target, rel}`, `highlight {color}`, `textStyle {color}`.
 
 `image` is a block node and is never inside a paragraph. `wikiLink.title` is the title when the link was made. The app shows the target's current title.
+
+### Canvas pages
+
+A page whose `doc` has a top-level `canvasBox` is a canvas page: an open, zoomable surface where you write anywhere. Each `canvasBox` is a text box placed at (`x`, `y`) from the page's top-left, `width` px wide, like a OneNote outline. The page's drawing is the ink list under the key `canvas` in the ink map, in the same page coordinates. New canvas pages start with one empty box, which the editor reuses for the first text typed. Exporters write the boxes top to bottom, then left to right (rows 24 px tall), followed by the drawing.
 
 ## CRDT layout (per page)
 
@@ -47,7 +52,9 @@ Each page is a Yjs document (binary update format v1):
   | `tool` | string | `pen` or `highlighter` |
   | `color` | string | CSS colour |
   | `size` | number | base width in CSS px |
-  | `pts` | bytes | little-endian `f32` triples `(x, y, pressure)`, CSS px from the ink block's top-left, pressure 0–1 |
+  | `pts` | bytes | little-endian `f32` triples `(x, y, pressure)`, CSS px from the ink block's top-left (from the page's top-left for `canvas`), pressure 0–1 |
+
+  The key `canvas` holds a canvas page's drawing. Other keys are `inkBlock` ids.
 
 ## Asset URLs
 
@@ -59,6 +66,7 @@ Each page is a Yjs document (binary update format v1):
 <Notebook>/
   notebook.json                 {"id", "title", "color", "sections": [folder names in order]}
   assets/<hash>.<ext>           every asset used in the notebook; ink-<inkId>.svg renders
+                                (ink-<pageId>.svg for a canvas page's drawing)
   <Section>/
     section.json                {"id", "title", "color", "pages": [...], "sections": [...]}
     <Page>.md                   front matter + "# Title" + Markdown body

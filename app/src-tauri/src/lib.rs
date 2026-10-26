@@ -166,8 +166,8 @@ async fn list_pages(state: State<'_, AppState>, section_id: String) -> CmdResult
     state.store().list_pages(&section_id).map_err(err)
 }
 
-/// Create a page. With `ink`, the page starts with a drawing area
-/// (`ink_height` px tall) for handwritten notes.
+/// Create a page. With `canvas`, the page is an open drawing canvas with
+/// text in positioned boxes (otherwise a document).
 #[tauri::command]
 async fn create_page(
     state: State<'_, AppState>,
@@ -175,27 +175,14 @@ async fn create_page(
     parent_id: Option<String>,
     title: String,
     after: Option<String>,
-    ink: Option<bool>,
-    ink_height: Option<u32>,
+    canvas: Option<bool>,
 ) -> CmdResult<PageInfo> {
     let placement = placement(None, after);
-    let mut store = state.store();
-    if ink.unwrap_or(false) {
-        let doc = Node::drawing_doc(ink_height.unwrap_or(640));
-        store
-            .create_page_with_content(
-                &section_id,
-                parent_id.as_deref(),
-                &title,
-                placement,
-                &doc,
-                &Default::default(),
-                None,
-            )
-            .map_err(err)
-    } else {
-        store.create_page(&section_id, parent_id.as_deref(), &title, placement).map_err(err)
-    }
+    let doc = if canvas.unwrap_or(false) { Node::canvas_doc() } else { Node::empty_doc() };
+    state
+        .store()
+        .create_page_with_content(&section_id, parent_id.as_deref(), &title, placement, &doc, &Default::default(), None)
+        .map_err(err)
 }
 
 #[tauri::command]

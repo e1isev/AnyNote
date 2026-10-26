@@ -1917,3 +1917,288 @@ kbd {
     display: none;
   }
 }
+
+/* ------------------------------------------------------------- canvas */
+
+.canvas-shell {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.canvas-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 8px 16px 6px;
+}
+
+.canvas-head .page-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 22px;
+}
+
+.canvas-head .page-meta {
+  margin: 0;
+  padding: 0;
+  border: none;
+  white-space: nowrap;
+}
+
+.canvas-page {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.canvas-tools {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 4px 10px;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-list);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.canvas-tools > * {
+  flex: none;
+}
+
+.canvas-tools button {
+  border: none;
+  padding: 6px;
+  color: var(--text-soft);
+}
+
+.canvas-tools button.active {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+.canvas-tools .swatch {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 2px solid transparent;
+}
+
+.canvas-tools .swatch.active {
+  border-color: var(--text);
+}
+
+.canvas-tools .size span {
+  display: inline-block;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.canvas-format {
+  flex: none;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.canvas-format .toolbar {
+  position: static;
+  margin: 0;
+  border-bottom: none;
+}
+
+.canvas-viewport {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  touch-action: none;
+  outline: none;
+  cursor: crosshair;
+  background-color: var(--bg);
+  background-image: radial-gradient(circle, var(--border-strong) 1.1px, transparent 1.2px);
+}
+
+.canvas-viewport.tool-text {
+  cursor: text;
+}
+
+.canvas-viewport.tool-hand {
+  cursor: grab;
+}
+
+.canvas-viewport.tool-eraser {
+  cursor: cell;
+}
+
+.canvas-world {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+}
+
+.canvas-text {
+  position: relative;
+  z-index: 1;
+}
+
+.canvas-text .ProseMirror {
+  position: relative;
+  width: 1px;
+  height: 1px;
+  min-height: 0;
+  outline: none;
+}
+
+.canvas-text .ProseMirror > * {
+  margin: 0;
+}
+
+.canvas-ink {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 2;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.canvas-box {
+  position: absolute;
+  padding: 4px 10px 6px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+}
+
+/* With a drawing tool, text is drawn over, not edited. */
+.canvas-viewport:not(.tool-text) .canvas-box {
+  pointer-events: none;
+  user-select: none;
+}
+
+.canvas-viewport.tool-text .canvas-box:hover,
+.canvas-box.editing {
+  border-color: var(--border-strong);
+  background: var(--bg);
+}
+
+/* The spare empty box waits invisibly for the next text. */
+.canvas-box.empty:not(.editing) {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.canvas-box-handle {
+  position: absolute;
+  top: -16px;
+  left: -1px;
+  right: -1px;
+  height: 16px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  cursor: move;
+  touch-action: none;
+  color: var(--muted);
+  background: var(--bg-list);
+  border: 1px solid var(--border-strong);
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+}
+
+.canvas-box-resize {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: -6px;
+  width: 12px;
+  display: none;
+  cursor: ew-resize;
+  touch-action: none;
+}
+
+.canvas-viewport.tool-text .canvas-box:hover .canvas-box-handle,
+.canvas-box.editing .canvas-box-handle {
+  display: flex;
+}
+
+.canvas-viewport.tool-text .canvas-box:hover .canvas-box-resize,
+.canvas-box.editing .canvas-box-resize {
+  display: block;
+}
+
+.canvas-zoom {
+  position: absolute;
+  z-index: 4;
+  right: 12px;
+  bottom: 12px;
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+.canvas-zoom button {
+  border: none;
+  padding: 6px;
+}
+
+.canvas-zoom .zoom-level {
+  min-width: 54px;
+  justify-content: center;
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (any-pointer: coarse) {
+  .canvas-tools button {
+    padding: 9px;
+  }
+  .canvas-tools .swatch {
+    width: 28px;
+    height: 28px;
+  }
+  .canvas-box-handle {
+    top: -26px;
+    height: 26px;
+  }
+  .canvas-box-resize {
+    right: -12px;
+    width: 24px;
+  }
+  .canvas-zoom button {
+    padding: 9px;
+  }
+}
+
+@media (max-width: 999px) {
+  .canvas-head {
+    padding: 6px 12px 4px;
+  }
+  .canvas-head .page-meta {
+    display: none;
+  }
+}
+
+/* Box frames and handles only while the Text tool is active. */
+.canvas-viewport:not(.tool-text) .canvas-box.editing {
+  border-color: transparent;
+  background: transparent;
+}
+
+.canvas-viewport:not(.tool-text) .canvas-box .canvas-box-handle,
+.canvas-viewport:not(.tool-text) .canvas-box .canvas-box-resize {
+  display: none;
+}
+
+.canvas-viewport:not(.tool-text) .canvas-box.empty {
+  visibility: hidden;
+}

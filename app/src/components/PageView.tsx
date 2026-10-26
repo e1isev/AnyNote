@@ -5,13 +5,14 @@ import { writeText } from "./clipboard";
 import { Check, CloudOff, Copy, History, Link2, Loader2, MoreHorizontal, RotateCcw, Save, Trash2, X } from "lucide-react";
 import { api } from "../api";
 import { PageEditor } from "../editor/Editor";
+import { CanvasEditor, isCanvasDoc } from "../editor/CanvasEditor";
 import { schemaExtensions } from "../editor/extensions";
 import { InkBlock } from "../editor/InkBlock";
 import { WikiLink } from "../editor/WikiLink";
 import { PageSync } from "../editor/provider";
 import { setPageTitle } from "../pageTitles";
 import { fullDate, relativeTime } from "../time";
-import type { Page, PageRef, Version } from "../types";
+import type { Page, PageRef, PMNode, Version } from "../types";
 import { confirmAction, openMenu, reportError, toast } from "../ui/overlay";
 
 interface Props {
@@ -126,6 +127,29 @@ export function PageView({ pageId, onOpenPage, onCreatePage, onPagesChanged, onD
       },
     ]);
 
+  const layout = sync && isCanvasDoc(sync.doc) ? "canvas" : "document";
+  const titleField = (
+    <textarea
+      ref={titleRef}
+      className="page-title"
+      rows={1}
+      value={title}
+      placeholder="Untitled page"
+      aria-label="Page title"
+      onChange={(e) => {
+        const v = e.target.value.replace(/\n/g, " ");
+        setTitle(v);
+        saveTitle(v);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === "ArrowDown") {
+          e.preventDefault();
+          (document.querySelector(".page-content, .canvas-viewport") as HTMLElement | null)?.focus();
+        }
+      }}
+    />
+  );
+
   return (
     <div className="page-view">
       <div className="page-main">
@@ -156,35 +180,27 @@ export function PageView({ pageId, onOpenPage, onCreatePage, onPagesChanged, onD
             </button>
           </div>
         </header>
-        <div className="page-scroll">
-          <div className="page-paper">
-            <textarea
-              ref={titleRef}
-              className="page-title"
-              rows={1}
-              value={title}
-              placeholder="Untitled page"
-              aria-label="Page title"
-              onChange={(e) => {
-                const v = e.target.value.replace(/\n/g, " ");
-                setTitle(v);
-                saveTitle(v);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === "ArrowDown") {
-                  e.preventDefault();
-                  (document.querySelector(".page-content") as HTMLElement | null)?.focus();
-                }
-              }}
-            />
-            {info && <div className="page-meta">Created {fullDate(info.page.createdAt)}</div>}
-            {sync ? (
-              <PageEditor key={pageId} sync={sync} onOpenPage={onOpenPage} onCreatePage={onCreatePage} />
-            ) : (
-              <div className="loading">Loading…</div>
-            )}
+        {layout === "canvas" ? (
+          <div className="canvas-shell">
+            <div className="canvas-head">
+              {titleField}
+              {info && <span className="page-meta">Created {fullDate(info.page.createdAt)}</span>}
+            </div>
+            {sync && <CanvasEditor key={pageId} sync={sync} onOpenPage={onOpenPage} onCreatePage={onCreatePage} />}
           </div>
-        </div>
+        ) : (
+          <div className="page-scroll">
+            <div className="page-paper">
+              {titleField}
+              {info && <div className="page-meta">Created {fullDate(info.page.createdAt)}</div>}
+              {sync ? (
+                <PageEditor key={pageId} sync={sync} onOpenPage={onOpenPage} onCreatePage={onCreatePage} />
+              ) : (
+                <div className="loading">Loading…</div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
       {panel === "backlinks" && <BacklinksPanel pageId={pageId} onOpenPage={onOpenPage} onClose={() => setPanel(null)} />}
       {panel === "history" && <HistoryPanel pageId={pageId} sync={sync} onClose={() => setPanel(null)} />}
@@ -232,6 +248,16 @@ function BacklinksPanel({ pageId, onOpenPage, onClose }: { pageId: string; onOpe
 
 const previewExtensions = [...schemaExtensions(), Mathematics, InkBlock, WikiLink];
 
+/** A canvas page's text boxes as one column, top to bottom, for previews. */
+function readingOrder(doc: PMNode): PMNode {
+  const boxes = (doc.content ?? []).filter((n) => n.type === "canvasBox");
+  if (boxes.length === 0) return doc;
+  const at = (n: PMNode, k: string) => Number(n.attrs?.[k] ?? 0);
+  boxes.sort((a, b) => Math.floor(at(a, "y") / 24) - Math.floor(at(b, "y") / 24) || at(a, "x") - at(b, "x"));
+  const content = boxes.flatMap((b) => b.content ?? []);
+  return { type: "doc", content: content.length ? content : [{ type: "paragraph" }] };
+}
+
 function HistoryPanel({ pageId, sync, onClose }: { pageId: string; sync: PageSync | null; onClose: () => void }) {
   const [versions, setVersions] = useState<Version[] | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
@@ -256,7 +282,7 @@ function HistoryPanel({ pageId, sync, onClose }: { pageId: string; sync: PageSyn
       .versionContent(selected)
       .then((doc) => {
         try {
-          setPreview(generateHTML(doc as never, previewExtensions));
+          setPreview(generateHTML(readingOrder(doc) as never, previewExtensions));
         } catch (e) {
           setPreview(`<p>Preview unavailable: ${String(e)}</p>`);
         }

@@ -15,6 +15,7 @@ import Collaboration, { isChangeOrigin } from "@tiptap/extension-collaboration";
 import { common, createLowlight } from "lowlight";
 import type * as Y from "yjs";
 import { Attachment } from "./Attachment";
+import { CanvasBox } from "./CanvasBox";
 import { assetSrc, canonicalAssetUrl } from "./assets";
 import { InkBlock } from "./InkBlock";
 import { SlashCommand } from "./SlashCommand";
@@ -39,6 +40,7 @@ export const BLOCK_ID_TYPES = [
   "blockMath",
   "inkBlock",
   "attachment",
+  "canvasBox",
 ];
 
 /** Images are stored as `anynote://asset/<hash>` and displayed through the asset protocol. */
@@ -57,6 +59,10 @@ const AssetImage = Image.extend({
 
 export interface EditorHooks {
   doc: Y.Doc;
+  /** "canvas": text in positioned boxes over a page-wide drawing. */
+  layout?: "document" | "canvas";
+  /** Current zoom of a canvas page. */
+  getZoom?: () => number;
   openPage: (pageId: string) => void;
   createPage: (title: string) => Promise<string | null>;
   editMath: (latex: string) => Promise<string | null>;
@@ -64,13 +70,15 @@ export interface EditorHooks {
 
 /** The single schema shared by every page. Changing node or attribute names
  * here requires the same change in anynote-core and docs/FORMAT.md. */
-export function schemaExtensions(): AnyExtension[] {
+export function schemaExtensions(opts: { getZoom?: () => number } = {}): AnyExtension[] {
   return [
     StarterKit.configure({
       codeBlock: false,
       undoRedo: false,
       link: { openOnClick: false, autolink: true, defaultProtocol: "https" },
       heading: { levels: [1, 2, 3, 4, 5, 6] },
+      // Canvas pages end with a text box; nothing gets appended after one.
+      trailingNode: { node: "paragraph", notAfter: ["paragraph", "canvasBox"] },
     }),
     TaskList,
     TaskItem.configure({ nested: true }),
@@ -86,6 +94,7 @@ export function schemaExtensions(): AnyExtension[] {
     Subscript,
     Superscript,
     Attachment,
+    CanvasBox.configure({ getZoom: opts.getZoom ?? (() => 1) }),
   ];
 }
 
@@ -107,7 +116,7 @@ export function editorExtensions(hooks: EditorHooks): AnyExtension[] {
   });
 
   return [
-    ...schemaExtensions(),
+    ...schemaExtensions({ getZoom: hooks.getZoom }),
     Mathematics.configure({
       katexOptions: { throwOnError: false },
       inlineOptions: { onClick: editMathAt("inline") },
@@ -122,7 +131,13 @@ export function editorExtensions(hooks: EditorHooks): AnyExtension[] {
     }),
     Placeholder.configure({
       placeholder: ({ node, pos }) =>
-        node.type.name === "heading" ? "Heading" : pos === 0 ? "Start writing, or type / for blocks and [[ to link a page" : "",
+        node.type.name === "heading"
+          ? "Heading"
+          : hooks.layout === "canvas"
+            ? "Type here, or / for blocks"
+            : pos === 0
+              ? "Start writing, or type / for blocks and [[ to link a page"
+              : "",
     }),
     Collaboration.configure({ document: hooks.doc }),
   ];

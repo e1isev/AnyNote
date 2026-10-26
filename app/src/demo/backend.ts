@@ -237,9 +237,11 @@ function addPage(sectionId: string, parentId: string | null, title: string, body
   return page;
 }
 
-function drawingDoc(height: number): PMNode {
-  return { type: "doc", content: [{ type: "inkBlock", attrs: { inkId: uuid(), height } }, { type: "paragraph" }] };
-}
+/** An empty canvas page (Node::canvas_doc in anynote-core). */
+const canvasDoc = (): PMNode => ({
+  type: "doc",
+  content: [{ type: "canvasBox", attrs: { x: 48, y: 48, width: 480 }, content: [{ type: "paragraph" }] }],
+});
 
 const emptyDoc: PMNode = { type: "doc", content: [{ type: "paragraph" }] };
 
@@ -250,7 +252,7 @@ function seed(): DB {
   const start: SectionRow = { ...row("Getting started", 1), notebookId: nb.id, parentId: null };
   const ideas: SectionRow = { ...row("Ideas", 2), notebookId: nb.id, parentId: null };
   fresh.sections.push(start, ideas);
-  addPage(start.id, null, "Handwriting", drawingDoc(560), undefined, fresh);
+  addPage(start.id, null, "Handwriting", canvasDoc(), undefined, fresh);
   addPage(start.id, null, "Welcome to AnyNote", welcome as PMNode, undefined, fresh);
   return fresh;
 }
@@ -395,7 +397,7 @@ export async function demoCall<T>(cmd: string, raw?: Args | Uint8Array, options?
     case "list_pages":
       return result(live(db.pages.filter((p) => p.sectionId === s("sectionId"))));
     case "create_page": {
-      const body = a.ink ? drawingDoc(Number(a.inkHeight) || 640) : emptyDoc;
+      const body = a.canvas ? canvasDoc() : emptyDoc;
       return result(addPage(s("sectionId"), opt("parentId") ?? null, s("title") ?? "", body, opt("after")));
     }
     case "get_page": {
