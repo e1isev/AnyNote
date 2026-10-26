@@ -141,11 +141,11 @@ export function App() {
   }, [openPage, refreshPages, refreshTree, selectSection, view]);
 
   const newPage = useCallback(
-    async (parentId?: string | null) => {
+    async (parentId?: string | null, after?: string) => {
       const sec = sectionRef.current;
       if (!sec) return;
       try {
-        const page = await api.createPage(sec.id, { parentId: parentId ?? null });
+        const page = await api.createPage(sec.id, { parentId: parentId ?? null, after });
         await openPage(page.id);
       } catch (e) {
         reportError(e);
@@ -174,7 +174,7 @@ export function App() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const mod = e.ctrlKey || e.metaKey;
-      if (mod && e.key.toLowerCase() === "k" && !document.querySelector(".ProseMirror:focus")) {
+      if (mod && e.key.toLowerCase() === "k") {
         e.preventDefault();
         setSearchOpen(true);
       } else if (mod && e.shiftKey && e.key.toLowerCase() === "f") {
@@ -261,7 +261,7 @@ export function App() {
         currentPageId={currentPageId}
         onOpen={(id) => void openPage(id)}
         onChanged={() => void refreshPages().catch(reportError)}
-        onNewPage={(parentId) => void newPage(parentId)}
+        onNewPage={(parentId, after) => void newPage(parentId, after)}
       />
       <main className="main">{main}</main>
       {searchOpen && <SearchPalette onOpen={(id) => void openPage(id)} onClose={() => setSearchOpen(false)} />}

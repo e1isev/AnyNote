@@ -3,7 +3,6 @@ name = "anynote-cli"
 description = "Command-line interface to an AnyNote store: import, export, search, tasks"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
 
 [[bin]]
 name = "anynote"

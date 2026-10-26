@@ -3,7 +3,6 @@ name = "anynote-onenote"
 description = "One-way importer from OneNote (.one/.onetoc2/.onepkg) into the AnyNote block model"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
 
 [dependencies]
 anynote-core.workspace = true

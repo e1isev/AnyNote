@@ -258,6 +258,17 @@ impl Node {
         });
     }
 
+    /// Put a `doc` in the exact shape the editor would leave it in: block ids
+    /// everywhere and a trailing empty paragraph after a non-paragraph last
+    /// block (the editor's TrailingNode). Otherwise merely opening a page
+    /// would write a change.
+    pub fn prepare_for_editor(&mut self) {
+        if !self.content.last().is_some_and(|n| n.is(kinds::PARAGRAPH)) {
+            self.content.push(Node::paragraph(vec![]));
+        }
+        self.ensure_block_ids();
+    }
+
     /// Merge adjacent text nodes with identical marks and drop empty ones.
     pub fn normalize_text(&mut self) {
         let mut merged: Vec<Node> = Vec::with_capacity(self.content.len());
@@ -313,6 +324,17 @@ mod tests {
             ),
         ]);
         assert_eq!(doc.plain_text(), "one two\nthree");
+    }
+
+    #[test]
+    fn prepare_for_editor_adds_trailing_paragraph_and_ids() {
+        let mut doc = Node::doc(vec![Node::new(kinds::HORIZONTAL_RULE)]);
+        doc.prepare_for_editor();
+        assert_eq!(doc.content.len(), 2);
+        assert!(doc.content[1].is(kinds::PARAGRAPH));
+        assert!(doc.content.iter().all(|n| n.attr_str("id").is_some()));
+        doc.prepare_for_editor();
+        assert_eq!(doc.content.len(), 2, "idempotent");
     }
 
     #[test]

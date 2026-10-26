@@ -490,11 +490,7 @@ impl Store {
             ref p => place(&self.conn, "pages", "section_id = ?1 AND deleted_at IS NULL", &[&section_id], &id, p)?,
         };
         let mut content = content.clone();
-        content.ensure_block_ids();
-        if content.content.is_empty() {
-            content = Node::empty_doc();
-            content.ensure_block_ids();
-        }
+        content.prepare_for_editor();
         let doc = ydoc::doc_from_content(&content, ink);
         let state = ydoc::encode_state(&doc);
         let title = clean_title(title, "");
@@ -744,8 +740,10 @@ impl Store {
         content: &Node,
         ink: &BTreeMap<String, Vec<Stroke>>,
     ) -> Result<Vec<u8>> {
+        let mut content = content.clone();
+        content.prepare_for_editor();
         let doc = self.load_doc(page_id)?;
-        let update = ydoc::replace_all(&doc, content, ink);
+        let update = ydoc::replace_all(&doc, &content, ink);
         self.persist_update(page_id, &doc, &update)?;
         Ok(update)
     }

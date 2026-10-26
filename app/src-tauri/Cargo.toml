@@ -3,7 +3,6 @@ name = "anynote-app"
 description = "AnyNote desktop app"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
 
 [lib]
 name = "anynote_app_lib"

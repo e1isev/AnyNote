@@ -56,8 +56,8 @@ pub fn convert_page(page: &Page, context: &str, sink: &mut dyn AssetSink, stats:
     let mut conv = Converter { sink, stats, ink: BTreeMap::new(), context: format!("{context} / {title}") };
 
     // Lay the canvas out: everything gets a top-left position in px. Ink is
-    // often stored as many one-stroke objects; strokes that touch or nearly
-    // touch are clustered into one drawing.
+    // often stored as many one-stroke objects; objects in the same vertical
+    // band are clustered into one drawing.
     let contents = page.contents();
     let mut items: Vec<(Option<f32>, Option<f32>)> = Vec::new();
     let mut kinds_: Vec<Item> = Vec::new();
@@ -89,6 +89,14 @@ pub fn convert_page(page: &Page, context: &str, sink: &mut dyn AssetSink, stats:
             PageContent::Unknown => conv.warn("skipped an unsupported page element"),
         }
     }
+    // Drawings keep their horizontal position relative to the page's
+    // leftmost content, so ink drawn beside text stays beside it.
+    let page_left = items
+        .iter()
+        .filter_map(|(x, _)| *x)
+        .chain(inks.iter().map(|(_, b)| b[0]))
+        .fold(f32::MAX, f32::min)
+        .clamp(0.0, f32::MAX);
     for (strokes, b) in cluster_ink(inks) {
         items.push((Some(b[0]), Some(b[1])));
         kinds_.push(Item::Ink(strokes));
@@ -104,7 +112,7 @@ pub fn convert_page(page: &Page, context: &str, sink: &mut dyn AssetSink, stats:
                 PageContent::EmbeddedFile(f) => blocks.extend(conv.file(f)),
                 _ => {}
             },
-            Some(Item::Ink(strokes)) => blocks.extend(conv.ink_block(&strokes)),
+            Some(Item::Ink(strokes)) => blocks.extend(conv.ink_block(&strokes, page_left)),
             None => {}
         }
     }
@@ -266,7 +274,7 @@ impl Converter<'_> {
                 Content::Ink(ink) => {
                     let mut strokes = Vec::new();
                     px_strokes(ink, (0.0, 0.0), &mut strokes);
-                    out.extend(self.ink_block(&strokes));
+                    out.extend(self.ink_block(&strokes, f32::INFINITY));
                 }
                 Content::Unknown => self.warn("skipped an unsupported paragraph element"),
             }
@@ -286,7 +294,7 @@ impl Converter<'_> {
                     px_strokes(container.ink(), (0.0, 0.0), &mut strokes);
                 }
             }
-            return self.ink_block(&strokes).into_iter().collect();
+            return self.ink_block(&strokes, f32::INFINITY).into_iter().collect();
         }
 
         let style_id = rt.paragraph_style().style_id().unwrap_or("p").to_string();
@@ -439,10 +447,12 @@ impl Converter<'_> {
 
     // -- ink ------------------------------------------------------------------
 
-    /// One `inkBlock` holding `strokes`, translated so the drawing starts at
-    /// a small margin from the block's top-left corner.
-    fn ink_block(&mut self, strokes: &[PxStroke]) -> Option<Node> {
+    /// One `inkBlock` holding `strokes`. Vertically the drawing starts a
+    /// small margin below the block's top; horizontally it keeps its offset
+    /// from `page_left` (pass `f32::INFINITY` to start at the left edge).
+    fn ink_block(&mut self, strokes: &[PxStroke], page_left: f32) -> Option<Node> {
         let [min_x, min_y, max_x, max_y] = bounds(strokes)?;
+        let min_x = min_x.min(page_left);
         let max_size = strokes.iter().map(|(s, _)| stroke_size(s)).fold(0f32, f32::max);
         let margin = max_size / 2.0 + 4.0;
         let converted: Vec<Stroke> = strokes
@@ -518,13 +528,13 @@ fn bounds(strokes: &[PxStroke]) -> Option<[f32; 4]> {
     (b[0] <= b[2]).then_some(b)
 }
 
-/// Merge ink objects whose bounds touch (within a small gap) into drawings:
-/// single-linkage clustering with a union-find.
+/// Merge ink objects whose vertical extents overlap or nearly touch into
+/// drawings: single-linkage clustering with a union-find. Horizontal distance
+/// is ignored, because a flattened page stacks blocks vertically, so ink side
+/// by side on the canvas must share a block to keep its layout.
 fn cluster_ink<T>(inks: Vec<(Vec<T>, [f32; 4])>) -> Vec<(Vec<T>, [f32; 4])> {
-    const GAP: f32 = 24.0;
-    let near = |a: &[f32; 4], b: &[f32; 4]| {
-        a[0] - GAP <= b[2] && b[0] - GAP <= a[2] && a[1] - GAP <= b[3] && b[1] - GAP <= a[3]
-    };
+    const GAP: f32 = 32.0;
+    let near = |a: &[f32; 4], b: &[f32; 4]| a[1] - GAP <= b[3] && b[1] - GAP <= a[3];
     fn root(parent: &mut [usize], mut i: usize) -> usize {
         while parent[i] != i {
             parent[i] = parent[parent[i]];
@@ -708,18 +718,19 @@ mod tests {
     }
 
     #[test]
-    fn nearby_ink_objects_cluster_into_drawings() {
+    fn ink_objects_in_one_vertical_band_cluster_into_drawings() {
         let inks = vec![
             (vec!["a"], [0.0, 0.0, 10.0, 10.0]),
-            (vec!["far"], [500.0, 500.0, 510.0, 510.0]),
-            (vec!["b"], [30.0, 0.0, 40.0, 10.0]), // within the gap of "a"
-            (vec!["c"], [60.0, 5.0, 70.0, 20.0]), // chained through "b"
+            (vec!["far below"], [0.0, 500.0, 10.0, 510.0]),
+            (vec!["b"], [300.0, 30.0, 340.0, 40.0]), // beside "a", within the vertical gap
+            (vec!["c"], [60.0, 60.0, 70.0, 80.0]),   // chained through "b"
         ];
         let mut clusters = cluster_ink(inks);
-        clusters.sort_by(|a, b| a.1[0].total_cmp(&b.1[0]));
+        clusters.sort_by(|a, b| a.1[1].total_cmp(&b.1[1]));
         assert_eq!(clusters.len(), 2);
         assert_eq!(clusters[0].0, vec!["a", "b", "c"]);
-        assert_eq!(clusters[0].1, [0.0, 0.0, 70.0, 20.0]);
+        assert_eq!(clusters[0].1, [0.0, 0.0, 340.0, 80.0]);
+        assert_eq!(clusters[1].0, vec!["far below"]);
     }
 
     #[test]

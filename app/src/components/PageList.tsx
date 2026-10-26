@@ -11,7 +11,7 @@ interface Props {
   currentPageId: string | null;
   onOpen: (pageId: string) => void;
   onChanged: () => void;
-  onNewPage: (parentId?: string | null) => void;
+  onNewPage: (parentId?: string | null, after?: string) => void;
 }
 
 /** Depth of each page in the subpage tree, in display order. */
@@ -42,6 +42,13 @@ export function PageList({ section, pages, currentPageId, onOpen, onChanged, onN
 
   const run = (p: Promise<unknown>) => p.then(onChanged).catch(reportError);
 
+  /** The last row of a page's subtree, so a new sibling lands after its subpages. */
+  const lastDescendant = (index: number) => {
+    let end = index;
+    while (end + 1 < rows.length && rows[end + 1].depth > rows[index].depth) end++;
+    return rows[end].page.id;
+  };
+
   const pageMenu = (e: React.MouseEvent, page: Page, index: number) => {
     const prev = index > 0 ? rows[index - 1] : null;
     const depth = rows[index].depth;
@@ -56,7 +63,7 @@ export function PageList({ section, pages, currentPageId, onOpen, onChanged, onN
     }
     const parent = page.parentId ? pages.find((p) => p.id === page.parentId) : undefined;
     openMenu(e, [
-      { label: "New page below", icon: <FilePlus2 size={15} />, onSelect: () => onNewPage(page.parentId) },
+      { label: "New page below", icon: <FilePlus2 size={15} />, onSelect: () => onNewPage(page.parentId, lastDescendant(index)) },
       { label: "New subpage", icon: <CornerDownRight size={15} />, onSelect: () => onNewPage(page.id) },
       {
         label: "Rename",

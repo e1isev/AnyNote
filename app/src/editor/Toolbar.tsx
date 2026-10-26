@@ -194,7 +194,7 @@ export function Toolbar({ editor, editMath }: { editor: Editor; editMath: (latex
           current={s.color}
           onPick={(c) => (c ? chain().setColor(c).run() : chain().unsetColor().run())}
         />
-        <Btn title="Link (Ctrl+K in text)" active={s.link} onClick={() => void editLink()}>
+        <Btn title="Link" active={s.link} onClick={() => void editLink()}>
           <LinkIcon size={16} />
         </Btn>
       </div>
