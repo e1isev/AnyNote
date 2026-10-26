@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import type { Node as PMNode } from "@tiptap/pm/model";
 import { fingerDraws, getPrefs, hasTouch, setPrefs, usePrefs } from "../prefs";
+import { SWIPE_EDGE } from "../touch";
 import { uuid } from "../uuid";
 import { confirmAction, reportError, toast } from "../ui/overlay";
 import { insertFiles } from "./assets";
@@ -408,6 +409,7 @@ export function CanvasEditor({ sync, onOpenPage, onCreatePage }: Props) {
         e.preventDefault();
         return;
       }
+      if (e.clientX <= SWIPE_EDGE) return; // a swipe from the screen edge opens the notebooks
     }
     if (inBox) return; // editing text: the editor handles it
     if (e.pointerType === "mouse" && e.button !== 0) {

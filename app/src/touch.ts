@@ -14,7 +14,15 @@ export function useMediaQuery(query: string): boolean {
 }
 
 /** Places where a sideways finger movement means something else. */
-const IGNORE = ".ink-surface, .ink-scroll, .ink-toolbar, .tableWrapper, pre, input, textarea, select, .toolbar, .suggestions, .palette, .modal";
+const IGNORE =
+  ".ink-surface, .ink-scroll, .ink-toolbar, .canvas-viewport, .canvas-tools, .tableWrapper, pre, input, textarea, select, .toolbar, .suggestions, .palette, .modal";
+
+/**
+ * On a canvas a finger draws or moves the page, so a drawer swipe there has
+ * to start this close (px) to the left edge of the screen. The canvas leaves
+ * touches that start here alone.
+ */
+export const SWIPE_EDGE = 24;
 
 /**
  * A long, deliberate sideways swipe: at least 30% of the screen width
@@ -36,11 +44,12 @@ export function useLongSwipe(onRight: () => void, onLeft: () => void) {
     let last = { x: 0, y: 0 };
     const down = (e: TouchEvent) => {
       const target = e.target as Element | null;
-      if (e.touches.length !== 1 || target?.closest?.(IGNORE)) {
+      const t = e.touches[0];
+      const fromEdge = t?.clientX <= SWIPE_EDGE && !!target?.closest?.(".canvas-viewport");
+      if (e.touches.length !== 1 || (!fromEdge && target?.closest?.(IGNORE))) {
         start = null;
         return;
       }
-      const t = e.touches[0];
       start = { x: t.clientX, y: t.clientY, t: Date.now() };
       last = { x: t.clientX, y: t.clientY };
     };
